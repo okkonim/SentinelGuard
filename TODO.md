@@ -9,6 +9,6 @@
 - [x] Create process_monitor.py: Use psutil to monitor running processes, detect anomalous network-related activity (e.g., high network usage), log to database.
 - [x] Create firewall.py: Main script with CLI interface for starting/stopping firewall, viewing logs, managing rules. Integrate all modules.
 - [x] Integrate logging across modules with timestamps, event types, and criticality levels.
-- [ ] Run the firewall prototype to test packet capture, filtering, FIM, process monitoring.
-- [ ] Verify database storage and CLI functionality.
-- [ ] Handle any runtime errors or missing features.
+- [x] Run the firewall prototype to test packet capture, filtering, FIM, process monitoring.
+- [x] Verify database storage and CLI functionality.
+- [x] Handle any runtime errors or missing features.

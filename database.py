@@ -64,7 +64,7 @@ class Database:
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ''', (timestamp, source_ip, dest_ip, source_port, dest_port, protocol, action, criticality))
         self.conn.commit()
-        logger.info(f"Network event logged: {source_ip}:{source_port} -> {dest_ip}:{dest_port} ({protocol}) - {action}")
+        logger.info(f"Сетевое событие: {source_ip}:{source_port} -> {dest_ip}:{dest_port} ({protocol}) - {action}")
 
     def insert_fim_event(self, file_path, event_type, criticality='WARNING'):
         timestamp = datetime.datetime.now().isoformat()
@@ -74,7 +74,7 @@ class Database:
             VALUES (?, ?, ?, ?)
         ''', (timestamp, file_path, event_type, criticality))
         self.conn.commit()
-        logger.warning(f"FIM event: {event_type} for {file_path}")
+        logger.warning(f"FIM событие: {event_type} для {file_path}")
 
     def insert_process_event(self, pid, process_name, event_type, criticality='INFO'):
         timestamp = datetime.datetime.now().isoformat()
@@ -84,7 +84,7 @@ class Database:
             VALUES (?, ?, ?, ?, ?)
         ''', (timestamp, pid, process_name, event_type, criticality))
         self.conn.commit()
-        logger.info(f"Process event: {process_name} (PID {pid}) - {event_type}")
+        logger.info(f"Событие процесса: {process_name} (PID {pid}) - {event_type}")
 
     def query_events(self, table, limit=10):
         cursor = self.conn.cursor()
