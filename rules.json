@@ -1,0 +1,29 @@
+[
+    {
+        "id": 1,
+        "source_ip": "192.168.1.0/24",
+        "dest_ip": "any",
+        "source_port": "any",
+        "dest_port": 80,
+        "protocol": "tcp",
+        "action": "ACCEPT"
+    },
+    {
+        "id": 2,
+        "source_ip": "any",
+        "dest_ip": "192.168.1.100",
+        "source_port": "any",
+        "dest_port": 22,
+        "protocol": "tcp",
+        "action": "DROP"
+    },
+    {
+        "id": 3,
+        "source_ip": "any",
+        "dest_ip": "any",
+        "source_port": "any",
+        "dest_port": "any",
+        "protocol": "icmp",
+        "action": "ACCEPT"
+    }
+]
