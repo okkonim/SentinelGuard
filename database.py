@@ -72,6 +72,19 @@ class Database:
             )
         ''')
 
+        # YARA events table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS yara_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT,
+                file_path TEXT,
+                rule_name TEXT,
+                event_type TEXT,
+                criticality TEXT,
+                details TEXT
+            )
+        ''')
+
         self.conn.commit()
 
     def insert_network_event(self, source_ip, dest_ip, source_port, dest_port, protocol, action, criticality='INFO'):
@@ -116,6 +129,17 @@ class Database:
         ''', (timestamp, alert_type, description, severity, details))
         self.conn.commit()
         logger.warning(f"NetSec Оповещение [{severity.upper()}]: {description}")
+
+    def insert_yara_event(self, file_path, rule_name, event_type, criticality='WARNING', details=None):
+        timestamp = datetime.datetime.now().isoformat()
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO yara_events (timestamp, file_path, rule_name, event_type, criticality, details)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (timestamp, file_path, rule_name, event_type, criticality, details))
+        conn.commit()
+        logger.warning(f"YARA событие: {rule_name} в {file_path} - {event_type}")
 
     def query_events(self, table, limit=10):
         cursor = self.conn.cursor()

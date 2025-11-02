@@ -114,3 +114,4 @@ firewall.db
 logs/
 *.log
 network_scan_*.json
+TODO.md

@@ -1,0 +1,19 @@
+{
+    "fim": {
+        "monitor_paths": ["./", "/tmp"],
+        "check_interval": 4
+    },
+    "yara": {
+        "rules_files": {
+            "sample": "sample.yar"
+        }
+    },
+    "logging": {
+        "level": "INFO",
+        "file": "firewall.log"
+    },
+    "process_monitor": {
+        "check_interval": 5,
+        "network_threshold": 1000000
+    }
+}
