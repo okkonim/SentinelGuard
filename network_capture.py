@@ -1,8 +1,26 @@
-from scapy.all import sniff, IP, TCP, UDP, ICMP
+try:
+    import scapy.all as scapy
+    sniff = scapy.sniff
+    IP = scapy.IP
+    TCP = scapy.TCP
+    UDP = scapy.UDP
+    ICMP = scapy.ICMP
+    SCAPY_AVAILABLE = True
+except Exception:
+    scapy = None
+    sniff = None
+    IP = TCP = UDP = ICMP = None
+    SCAPY_AVAILABLE = False
+
 from rules_manager import RulesManager
 from database import Database
 import threading
 import time
+import logging
+import os
+
+logger = logging.getLogger(__name__)
+
 
 class NetworkCapture:
     def __init__(self, interface='ens33', rules_file='rules.json', db_name='firewall.db'):
@@ -15,36 +33,79 @@ class NetworkCapture:
         if not self.running:
             return
 
-        action = self.rules_manager.check_packet(packet)
+        try:
+            action = self.rules_manager.check_packet(packet)
 
-        # Extract details for logging
-        source_ip = dest_ip = source_port = dest_port = protocol = None
-        if packet.haslayer(IP):
-            source_ip = packet[IP].src
-            dest_ip = packet[IP].dst
-            protocol = packet[IP].proto
-        if packet.haslayer(TCP):
-            source_port = packet[TCP].sport
-            dest_port = packet[TCP].dport
-            protocol = 'tcp'
-        elif packet.haslayer(UDP):
-            source_port = packet[UDP].sport
-            dest_port = packet[UDP].dport
-            protocol = 'udp'
-        elif packet.haslayer(ICMP):
-            protocol = 'icmp'
+            # Extract details for logging
+            source_ip = dest_ip = source_port = dest_port = protocol = None
+            if IP and packet.haslayer(IP):
+                source_ip = packet[IP].src
+                dest_ip = packet[IP].dst
+                protocol = packet[IP].proto
+            if TCP and packet.haslayer(TCP):
+                source_port = packet[TCP].sport
+                dest_port = packet[TCP].dport
+                protocol = 'tcp'
+            elif UDP and packet.haslayer(UDP):
+                source_port = packet[UDP].sport
+                dest_port = packet[UDP].dport
+                protocol = 'udp'
+            elif ICMP and packet.haslayer(ICMP):
+                protocol = 'icmp'
 
-        # Log to database
-        criticality = 'INFO' if action == 'ACCEPT' else 'WARNING'
-        self.db.insert_network_event(source_ip, dest_ip, source_port, dest_port, protocol, action, criticality)
+            # Log to database
+            criticality = 'INFO' if action == 'ACCEPT' else 'WARNING'
+            try:
+                self.db.insert_network_event(source_ip, dest_ip, source_port, dest_port, protocol, action, criticality)
+            except Exception as e:
+                logger.error(f"Failed to insert network event: {e}")
 
-        # Для демонстрации, вывод действия
-        print(f"Пакет: {source_ip}:{source_port} -> {dest_ip}:{dest_port} ({protocol}) - {action}")
+            # Для демонстрации, вывод действия
+            logger.info(f"Пакет: {source_ip}:{source_port} -> {dest_ip}:{dest_port} ({protocol}) - {action}")
+        except Exception as e:
+            logger.exception(f"Exception in packet_callback: {e}")
 
     def start_capture(self):
         self.running = True
         print(f"Запуск захвата пакетов на интерфейсе {self.interface}")
-        sniff(iface=self.interface, prn=self.packet_callback, store=0, stop_filter=lambda x: not self.running)
+        # Проверим права: захват пакетов требует прав суперпользователя на Linux
+        try:
+            if os.name == 'posix' and os.geteuid() != 0:
+                logger.error("Sniffing requires root privileges. Please run as root (sudo).")
+                print("Ошибка: захват пакетов требует прав суперпользователя (sudo). Перезапустите с sudo.")
+                self.running = False
+                return
+        except AttributeError:
+            # os.geteuid may not exist on some platforms (Windows), ignore
+            pass
+        if sniff is None:
+            print("Ошибка: модуль scapy не установлен. Установите пакет scapy и повторите попытку.")
+            self.running = False
+            return
+
+        # Проверим интерфейс: если заданный интерфейс отсутствует, используем scapy.conf.iface
+        try:
+            available_ifaces = []
+            try:
+                available_ifaces = scapy.get_if_list()
+            except Exception:
+                available_ifaces = []
+
+            iface_to_use = self.interface
+            if available_ifaces and self.interface not in available_ifaces:
+                logger.warning(f"Interface {self.interface} not found, using default interface {scapy.conf.iface}")
+                iface_to_use = scapy.conf.iface
+
+            try:
+                sniff(iface=iface_to_use, prn=self.packet_callback, store=0, stop_filter=lambda x: not self.running)
+            except Exception as e:
+                logger.exception(f"Error while sniffing on interface {iface_to_use}: {e}")
+                self.running = False
+                return
+        except Exception as e:
+            logger.exception(f"Unexpected error in start_capture: {e}")
+            self.running = False
+            return
 
     def stop_capture(self):
         self.running = False

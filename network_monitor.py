@@ -1151,23 +1151,36 @@ class NetworkMonitor:
                 print(f"   Command Line: {process_info.get('cmdline', 'N/A')}")
 
             for i, conn in enumerate(process_data['connections'], 1):
-                local_addr = conn.get('laddr', [None, None])
-                remote_addr = conn.get('raddr', [None, None])
+                local_addr = conn.get('laddr')
+                remote_addr = conn.get('raddr')
 
-                local_str = f"{local_addr[0]}:{local_addr[1]}" if local_addr and local_addr[0] else "N/A"
-                remote_str = f"{remote_addr[0]}:{remote_addr[1]}" if remote_addr and remote_addr[0] else "N/A"
+                try:
+                    local_str = f"{local_addr[0]}:{local_addr[1]}" if local_addr and local_addr[0] else "N/A"
+                except Exception:
+                    local_str = "N/A"
+                try:
+                    remote_str = f"{remote_addr[0]}:{remote_addr[1]}" if remote_addr and remote_addr[0] else "N/A"
+                except Exception:
+                    remote_str = "N/A"
 
                 status = conn.get('status', 'N/A')
-                conn_type = conn.get('type', 'N/A').upper()
+                conn_type = conn.get('type', 'N/A')
+                if isinstance(conn_type, str):
+                    conn_type = conn_type.upper()
+                else:
+                    conn_type = str(conn_type).upper()
 
-        print(f"   {i:2d}. {conn_type:4s} {local_str:22s} -> {remote_str:22s} [{status}]")
+                print(f"   {i:2d}. {conn_type:4s} {local_str:22s} -> {remote_str:22s} [{status}]")
 
-        if show_details:
-            create_time = conn.get('create_time')
-            if create_time:
-                from datetime import datetime
-                create_dt = datetime.fromtimestamp(create_time)
-                print(f"       Created: {create_dt.strftime('%Y-%m-%d %H:%M:%S')}")
+                if show_details:
+                    create_time = conn.get('create_time')
+                    if create_time:
+                        from datetime import datetime
+                        try:
+                            create_dt = datetime.fromtimestamp(create_time)
+                            print(f"       Created: {create_dt.strftime('%Y-%m-%d %H:%M:%S')}")
+                        except Exception:
+                            pass
 
     def run_filtered_scan(self, filters=None):
         """Запуск сканирования с применением фильтров"""

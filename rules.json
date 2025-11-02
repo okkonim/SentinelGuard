@@ -1,10 +1,10 @@
 [
     {
         "id": 1,
-        "source_ip": "192.168.1.0/24",
+        "source_ip": "192.168.221.0/24",
         "dest_ip": "any",
         "source_port": "any",
-        "dest_port": 80,
+        "dest_port": 22,
         "protocol": "tcp",
         "action": "ACCEPT"
     },

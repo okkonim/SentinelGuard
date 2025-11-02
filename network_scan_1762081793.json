@@ -1,0 +1,429 @@
+{
+  "timestamp": "2025-11-02T11:09:53.772232",
+  "connections": [
+    {
+      "laddr": [
+        "0.0.0.0",
+        22
+      ],
+      "raddr": [],
+      "status": "LISTEN",
+      "pid": 19249,
+      "type": "tcp",
+      "family": 2,
+      "conn_type": 1,
+      "name": "sshd",
+      "exe": "/usr/sbin/sshd",
+      "cmdline": "sshd: /usr/sbin/sshd -D [listener] 0 of 10-100 startups",
+      "create_time": 1762073515.64,
+      "ppid": 1,
+      "username": "root"
+    },
+    {
+      "laddr": [
+        "192.168.221.130",
+        58716
+      ],
+      "raddr": [
+        "20.250.119.64",
+        443
+      ],
+      "status": "TIME_WAIT",
+      "pid": null,
+      "type": "tcp",
+      "family": 2,
+      "conn_type": 1
+    },
+    {
+      "laddr": [
+        "127.0.0.54",
+        53
+      ],
+      "raddr": [],
+      "status": "LISTEN",
+      "pid": 9463,
+      "type": "tcp",
+      "family": 2,
+      "conn_type": 1,
+      "name": "systemd-resolved",
+      "exe": "/usr/lib/systemd/systemd-resolved",
+      "cmdline": "/usr/lib/systemd/systemd-resolved",
+      "create_time": 1762073419.15,
+      "ppid": 1,
+      "username": "systemd-resolve"
+    },
+    {
+      "laddr": [
+        "127.0.0.53",
+        53
+      ],
+      "raddr": [],
+      "status": "LISTEN",
+      "pid": 9463,
+      "type": "tcp",
+      "family": 2,
+      "conn_type": 1,
+      "name": "systemd-resolved",
+      "exe": "/usr/lib/systemd/systemd-resolved",
+      "cmdline": "/usr/lib/systemd/systemd-resolved",
+      "create_time": 1762073419.15,
+      "ppid": 1,
+      "username": "systemd-resolve"
+    },
+    {
+      "laddr": [
+        "192.168.221.130",
+        60480
+      ],
+      "raddr": [
+        "216.24.57.251",
+        443
+      ],
+      "status": "ESTABLISHED",
+      "pid": 1668,
+      "type": "tcp",
+      "family": 2,
+      "conn_type": 1,
+      "name": "node",
+      "exe": "/home/userss/.vscode-server/cli/servers/Stable-7d842fb85a0275a4a8e4d7e040d2625abbf7f084/server/node",
+      "cmdline": "/home/userss/.vscode-server/cli/servers/Stable-7d842fb85a0275a4a8e4d7e040d2625abbf7f084/server/node --dns-result-order=ipv4first /home/userss/.vscode-server/cli/servers/Stable-7d842fb85a0275a4a8e4d7e040d2625abbf7f084/server/out/bootstrap-fork --type=extensionHost --transformURIs --useHostProxy=false",
+      "create_time": 1762071472.35,
+      "ppid": 1465,
+      "username": "userss"
+    },
+    {
+      "laddr": [
+        "127.0.0.53",
+        53
+      ],
+      "raddr": [],
+      "status": "NONE",
+      "pid": 9463,
+      "type": "udp",
+      "family": 2,
+      "conn_type": 2,
+      "name": "systemd-resolved",
+      "exe": "/usr/lib/systemd/systemd-resolved",
+      "cmdline": "/usr/lib/systemd/systemd-resolved",
+      "create_time": 1762073419.15,
+      "ppid": 1,
+      "username": "systemd-resolve"
+    },
+    {
+      "laddr": [
+        "192.168.221.130",
+        51128
+      ],
+      "raddr": [
+        "140.82.114.22",
+        443
+      ],
+      "status": "CLOSE_WAIT",
+      "pid": 1668,
+      "type": "tcp",
+      "family": 2,
+      "conn_type": 1,
+      "name": "node",
+      "exe": "/home/userss/.vscode-server/cli/servers/Stable-7d842fb85a0275a4a8e4d7e040d2625abbf7f084/server/node",
+      "cmdline": "/home/userss/.vscode-server/cli/servers/Stable-7d842fb85a0275a4a8e4d7e040d2625abbf7f084/server/node --dns-result-order=ipv4first /home/userss/.vscode-server/cli/servers/Stable-7d842fb85a0275a4a8e4d7e040d2625abbf7f084/server/out/bootstrap-fork --type=extensionHost --transformURIs --useHostProxy=false",
+      "create_time": 1762071472.35,
+      "ppid": 1465,
+      "username": "userss"
+    },
+    {
+      "laddr": [
+        "::",
+        22
+      ],
+      "raddr": [],
+      "status": "LISTEN",
+      "pid": 19249,
+      "type": "tcp",
+      "family": 10,
+      "conn_type": 1,
+      "name": "sshd",
+      "exe": "/usr/sbin/sshd",
+      "cmdline": "sshd: /usr/sbin/sshd -D [listener] 0 of 10-100 startups",
+      "create_time": 1762073515.64,
+      "ppid": 1,
+      "username": "root"
+    },
+    {
+      "laddr": [
+        "192.168.221.130",
+        58708
+      ],
+      "raddr": [
+        "20.250.119.64",
+        443
+      ],
+      "status": "TIME_WAIT",
+      "pid": null,
+      "type": "tcp",
+      "family": 2,
+      "conn_type": 1
+    },
+    {
+      "laddr": [
+        "127.0.0.1",
+        36581
+      ],
+      "raddr": [
+        "127.0.0.1",
+        42218
+      ],
+      "status": "ESTABLISHED",
+      "pid": 23703,
+      "type": "tcp",
+      "family": 2,
+      "conn_type": 1,
+      "name": "code-7d842fb85a0275a4a8e4d7e040d2625abbf7f084",
+      "exe": "/home/userss/.vscode-server/code-7d842fb85a0275a4a8e4d7e040d2625abbf7f084",
+      "cmdline": "/home/userss/.vscode-server/code-7d842fb85a0275a4a8e4d7e040d2625abbf7f084 command-shell --cli-data-dir /home/userss/.vscode-server/cli --parent-process-id 23685 --on-host=127.0.0.1 --on-port",
+      "create_time": 1762077004.19,
+      "ppid": 23685,
+      "username": "userss"
+    },
+    {
+      "laddr": [
+        "127.0.0.54",
+        53
+      ],
+      "raddr": [],
+      "status": "NONE",
+      "pid": 9463,
+      "type": "udp",
+      "family": 2,
+      "conn_type": 2,
+      "name": "systemd-resolved",
+      "exe": "/usr/lib/systemd/systemd-resolved",
+      "cmdline": "/usr/lib/systemd/systemd-resolved",
+      "create_time": 1762073419.15,
+      "ppid": 1,
+      "username": "systemd-resolve"
+    },
+    {
+      "laddr": [
+        "192.168.221.130",
+        58722
+      ],
+      "raddr": [
+        "20.250.119.64",
+        443
+      ],
+      "status": "ESTABLISHED",
+      "pid": 23740,
+      "type": "tcp",
+      "family": 2,
+      "conn_type": 1,
+      "name": "node",
+      "exe": "/home/userss/.vscode-server/cli/servers/Stable-7d842fb85a0275a4a8e4d7e040d2625abbf7f084/server/node",
+      "cmdline": "/home/userss/.vscode-server/cli/servers/Stable-7d842fb85a0275a4a8e4d7e040d2625abbf7f084/server/node --dns-result-order=ipv4first /home/userss/.vscode-server/cli/servers/Stable-7d842fb85a0275a4a8e4d7e040d2625abbf7f084/server/out/bootstrap-fork --type=extensionHost --transformURIs --useHostProxy=false",
+      "create_time": 1762077005.56,
+      "ppid": 1465,
+      "username": "userss"
+    },
+    {
+      "laddr": [
+        "192.168.221.130",
+        60168
+      ],
+      "raddr": [
+        "216.24.57.251",
+        443
+      ],
+      "status": "ESTABLISHED",
+      "pid": 23740,
+      "type": "tcp",
+      "family": 2,
+      "conn_type": 1,
+      "name": "node",
+      "exe": "/home/userss/.vscode-server/cli/servers/Stable-7d842fb85a0275a4a8e4d7e040d2625abbf7f084/server/node",
+      "cmdline": "/home/userss/.vscode-server/cli/servers/Stable-7d842fb85a0275a4a8e4d7e040d2625abbf7f084/server/node --dns-result-order=ipv4first /home/userss/.vscode-server/cli/servers/Stable-7d842fb85a0275a4a8e4d7e040d2625abbf7f084/server/out/bootstrap-fork --type=extensionHost --transformURIs --useHostProxy=false",
+      "create_time": 1762077005.56,
+      "ppid": 1465,
+      "username": "userss"
+    },
+    {
+      "laddr": [
+        "192.168.221.130",
+        22
+      ],
+      "raddr": [
+        "192.168.221.1",
+        63798
+      ],
+      "status": "ESTABLISHED",
+      "pid": 23684,
+      "type": "tcp",
+      "family": 2,
+      "conn_type": 1,
+      "name": "sshd",
+      "exe": "/usr/sbin/sshd",
+      "cmdline": "sshd: userss@notty  ",
+      "create_time": 1762077003.91,
+      "ppid": 23665,
+      "username": "userss"
+    },
+    {
+      "laddr": [
+        "192.168.221.130",
+        60472
+      ],
+      "raddr": [
+        "216.24.57.251",
+        443
+      ],
+      "status": "ESTABLISHED",
+      "pid": 1668,
+      "type": "tcp",
+      "family": 2,
+      "conn_type": 1,
+      "name": "node",
+      "exe": "/home/userss/.vscode-server/cli/servers/Stable-7d842fb85a0275a4a8e4d7e040d2625abbf7f084/server/node",
+      "cmdline": "/home/userss/.vscode-server/cli/servers/Stable-7d842fb85a0275a4a8e4d7e040d2625abbf7f084/server/node --dns-result-order=ipv4first /home/userss/.vscode-server/cli/servers/Stable-7d842fb85a0275a4a8e4d7e040d2625abbf7f084/server/out/bootstrap-fork --type=extensionHost --transformURIs --useHostProxy=false",
+      "create_time": 1762071472.35,
+      "ppid": 1465,
+      "username": "userss"
+    },
+    {
+      "laddr": [
+        "127.0.0.1",
+        36581
+      ],
+      "raddr": [],
+      "status": "LISTEN",
+      "pid": 23703,
+      "type": "tcp",
+      "family": 2,
+      "conn_type": 1,
+      "name": "code-7d842fb85a0275a4a8e4d7e040d2625abbf7f084",
+      "exe": "/home/userss/.vscode-server/code-7d842fb85a0275a4a8e4d7e040d2625abbf7f084",
+      "cmdline": "/home/userss/.vscode-server/code-7d842fb85a0275a4a8e4d7e040d2625abbf7f084 command-shell --cli-data-dir /home/userss/.vscode-server/cli --parent-process-id 23685 --on-host=127.0.0.1 --on-port",
+      "create_time": 1762077004.19,
+      "ppid": 23685,
+      "username": "userss"
+    },
+    {
+      "laddr": [
+        "192.168.221.130",
+        60166
+      ],
+      "raddr": [
+        "216.24.57.251",
+        443
+      ],
+      "status": "ESTABLISHED",
+      "pid": 23740,
+      "type": "tcp",
+      "family": 2,
+      "conn_type": 1,
+      "name": "node",
+      "exe": "/home/userss/.vscode-server/cli/servers/Stable-7d842fb85a0275a4a8e4d7e040d2625abbf7f084/server/node",
+      "cmdline": "/home/userss/.vscode-server/cli/servers/Stable-7d842fb85a0275a4a8e4d7e040d2625abbf7f084/server/node --dns-result-order=ipv4first /home/userss/.vscode-server/cli/servers/Stable-7d842fb85a0275a4a8e4d7e040d2625abbf7f084/server/out/bootstrap-fork --type=extensionHost --transformURIs --useHostProxy=false",
+      "create_time": 1762077005.56,
+      "ppid": 1465,
+      "username": "userss"
+    },
+    {
+      "laddr": [
+        "127.0.0.1",
+        42218
+      ],
+      "raddr": [
+        "127.0.0.1",
+        36581
+      ],
+      "status": "ESTABLISHED",
+      "pid": 23684,
+      "type": "tcp",
+      "family": 2,
+      "conn_type": 1,
+      "name": "sshd",
+      "exe": "/usr/sbin/sshd",
+      "cmdline": "sshd: userss@notty  ",
+      "create_time": 1762077003.91,
+      "ppid": 23665,
+      "username": "userss"
+    },
+    {
+      "laddr": [
+        "192.168.221.130",
+        68
+      ],
+      "raddr": [],
+      "status": "NONE",
+      "pid": 6699,
+      "type": "udp",
+      "family": 2,
+      "conn_type": 2,
+      "name": "systemd-networkd",
+      "exe": "/usr/lib/systemd/systemd-networkd",
+      "cmdline": "/usr/lib/systemd/systemd-networkd",
+      "create_time": 1762073374.99,
+      "ppid": 1,
+      "username": "systemd-network"
+    }
+  ],
+  "suspicious_patterns": {
+    "suspicious_ports": [],
+    "unusual_connections": [],
+    "high_frequency_connections": [],
+    "encryption_tunnels": []
+  },
+  "rootkit_check": [
+    {
+      "type": "hidden_from_psutil",
+      "connections": [
+        "('192.168.221.130', 60480):('216.24.57.251', 443)",
+        "('127.0.0.1', 36581):('0.0.0.0', 0)",
+        "('0.0.0.0', 22):('0.0.0.0', 0)",
+        "('127.0.0.1', 42218):('127.0.0.1', 36581)",
+        "('127.0.0.53', 53):('0.0.0.0', 0)",
+        "('192.168.221.130', 60166):('216.24.57.251', 443)",
+        "('192.168.221.130', 68):('0.0.0.0', 0)",
+        "('127.0.0.1', 36581):('127.0.0.1', 42218)",
+        "('192.168.221.130', 22):('192.168.221.1', 63798)",
+        "('192.168.221.130', 58708):('20.250.119.64', 443)",
+        "('192.168.221.130', 60168):('216.24.57.251', 443)",
+        "('127.0.0.54', 53):('0.0.0.0', 0)",
+        "('192.168.221.130', 60472):('216.24.57.251', 443)",
+        "('192.168.221.130', 58722):('20.250.119.64', 443)",
+        "('192.168.221.130', 51128):('140.82.114.22', 443)"
+      ],
+      "severity": "high"
+    },
+    {
+      "type": "hidden_from_proc",
+      "connections": [
+        "addr(ip='192.168.221.130', port=58722):addr(ip='20.250.119.64', port=443)",
+        "addr(ip='192.168.221.130', port=60472):addr(ip='216.24.57.251', port=443)",
+        "addr(ip='192.168.221.130', port=60480):addr(ip='216.24.57.251', port=443)",
+        "addr(ip='192.168.221.130', port=60166):addr(ip='216.24.57.251', port=443)",
+        "addr(ip='192.168.221.130', port=58716):addr(ip='20.250.119.64', port=443)",
+        "addr(ip='192.168.221.130', port=22):addr(ip='192.168.221.1', port=63798)",
+        "addr(ip='127.0.0.1', port=36581):addr(ip='127.0.0.1', port=42218)",
+        "addr(ip='192.168.221.130', port=58708):addr(ip='20.250.119.64', port=443)",
+        "addr(ip='127.0.0.1', port=42218):addr(ip='127.0.0.1', port=36581)",
+        "addr(ip='192.168.221.130', port=60168):addr(ip='216.24.57.251', port=443)",
+        "addr(ip='192.168.221.130', port=51128):addr(ip='140.82.114.22', port=443)"
+      ],
+      "severity": "medium"
+    }
+  ],
+  "hidden_processes": [],
+  "alerts": [
+    {
+      "timestamp": "2025-11-02T11:09:53.689488",
+      "type": "rootkit_hiding",
+      "description": "Network hiding detected: hidden_from_psutil",
+      "severity": "high"
+    },
+    {
+      "timestamp": "2025-11-02T11:09:53.703908",
+      "type": "rootkit_hiding",
+      "description": "Network hiding detected: hidden_from_proc",
+      "severity": "medium"
+    }
+  ]
+}

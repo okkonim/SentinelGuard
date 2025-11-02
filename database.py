@@ -100,14 +100,11 @@ class Database:
         timestamp = datetime.datetime.now().isoformat()
         conn = self.get_connection()
         cursor = conn.cursor()
-    def insert_process_event(self, pid, process_name, event_type, criticality='INFO'):
-        timestamp = datetime.datetime.now().isoformat()
-        cursor = self.conn.cursor()
         cursor.execute('''
             INSERT INTO process_events (timestamp, pid, process_name, event_type, criticality)
             VALUES (?, ?, ?, ?, ?)
         ''', (timestamp, pid, process_name, event_type, criticality))
-        self.conn.commit()
+        conn.commit()
         logger.info(f"Событие процесса: {process_name} (PID {pid}) - {event_type}")
 
     def insert_netsec_alert(self, alert_type, description, severity='medium', details=None):
@@ -128,3 +125,10 @@ class Database:
     def close(self):
         if self.conn:
             self.conn.close()
+            # Also clear the cached connection if any
+            if hasattr(self, '_conn'):
+                try:
+                    self._conn.close()
+                except Exception:
+                    pass
+                self._conn = None
