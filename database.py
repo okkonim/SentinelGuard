@@ -85,6 +85,46 @@ class Database:
             )
         ''')
 
+        # PE files table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS pe_files (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT,
+                file_path TEXT,
+                sha256 TEXT UNIQUE,
+                architecture TEXT,
+                entry_point INTEGER,
+                characteristics INTEGER
+            )
+        ''')
+
+        # PE sections table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS pe_sections (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                file_id INTEGER,
+                name TEXT,
+                virtual_size INTEGER,
+                raw_size INTEGER,
+                virtual_address INTEGER,
+                entropy REAL,
+                anomalies TEXT,
+                FOREIGN KEY (file_id) REFERENCES pe_files (id)
+            )
+        ''')
+
+        # PE imports table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS pe_imports (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                file_id INTEGER,
+                dll TEXT,
+                function TEXT,
+                suspicious INTEGER,
+                FOREIGN KEY (file_id) REFERENCES pe_files (id)
+            )
+        ''')
+
         self.conn.commit()
 
     def insert_network_event(self, source_ip, dest_ip, source_port, dest_port, protocol, action, criticality='INFO'):
@@ -140,6 +180,58 @@ class Database:
         ''', (timestamp, file_path, rule_name, event_type, criticality, details))
         conn.commit()
         logger.warning(f"YARA событие: {rule_name} в {file_path} - {event_type}")
+
+    def insert_pe_file(self, file_path, sha256, architecture=None, entry_point=None, characteristics=None):
+        timestamp = datetime.datetime.now().isoformat()
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO pe_files (timestamp, file_path, sha256, architecture, entry_point, characteristics)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (timestamp, file_path, sha256, architecture, entry_point, characteristics))
+        file_id = cursor.lastrowid
+        conn.commit()
+        logger.info(f"PE file inserted: {file_path}")
+        return file_id
+
+    def insert_pe_section(self, file_id, name, virtual_size, raw_size, virtual_address, entropy, anomalies):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO pe_sections (file_id, name, virtual_size, raw_size, virtual_address, entropy, anomalies)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (file_id, name, virtual_size, raw_size, virtual_address, entropy, anomalies))
+        conn.commit()
+
+    def insert_pe_import(self, file_id, dll, function, suspicious):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO pe_imports (file_id, dll, function, suspicious)
+            VALUES (?, ?, ?, ?)
+        ''', (file_id, dll, function, 1 if suspicious else 0))
+        conn.commit()
+
+    def query_pe_files(self, limit=10):
+        cursor = self.conn.cursor()
+        cursor.execute('SELECT * FROM pe_files ORDER BY timestamp DESC LIMIT ?', (limit,))
+        return cursor.fetchall()
+
+    def query_pe_sections(self, file_id=None, limit=10):
+        cursor = self.conn.cursor()
+        if file_id:
+            cursor.execute('SELECT * FROM pe_sections WHERE file_id = ? ORDER BY id LIMIT ?', (file_id, limit))
+        else:
+            cursor.execute('SELECT * FROM pe_sections ORDER BY id DESC LIMIT ?', (limit,))
+        return cursor.fetchall()
+
+    def query_pe_imports(self, file_id=None, limit=10):
+        cursor = self.conn.cursor()
+        if file_id:
+            cursor.execute('SELECT * FROM pe_imports WHERE file_id = ? ORDER BY id LIMIT ?', (file_id, limit))
+        else:
+            cursor.execute('SELECT * FROM pe_imports ORDER BY id DESC LIMIT ?', (limit,))
+        return cursor.fetchall()
 
     def query_events(self, table, limit=10):
         cursor = self.conn.cursor()

@@ -5,6 +5,7 @@ import os
 import logging
 from database import Database
 from yara_scanner import YARAScanner
+from pe_analyzer import PEAnalyzer
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +16,7 @@ class ProcessMonitor:
         self.config_path = config_path
         self.db = Database(db_name)
         self.yara_scanner = YARAScanner(db_name)
+        self.pe_analyzer = PEAnalyzer(db_name)
         self.check_interval = 5
         self.network_threshold = 1000000  # 1MB
         self.running = False
@@ -115,6 +117,28 @@ class ProcessMonitor:
     def handle_anomaly(self, pid, name, exe_path, description, criticality):
         self.db.insert_process_event(pid, name, f'anomaly: {description}', criticality)
         print(f"Аномалия процесса: {name} (PID {pid}) - {description}")
+
+        # Trigger PE analysis if exe is PE file
+        if exe_path and os.path.exists(exe_path) and self.pe_analyzer.is_pe_file(exe_path):
+            print(f"Запуск PE анализа для подозрительного процесса {name}: {exe_path}")
+            pe_result = self.pe_analyzer.analyze_file(exe_path)
+            if pe_result:
+                # Check for PE anomalies
+                pe_anomalies = []
+                for section in pe_result['sections']:
+                    if section['anomalies']:
+                        pe_anomalies.append(f"Section {section['name']}: {section['anomalies']}")
+                for imp in pe_result['imports']:
+                    if imp['suspicious']:
+                        pe_anomalies.append(f"Suspicious import: {imp['function']}")
+
+                if pe_anomalies:
+                    print(f"PE анализ подтвердил аномалии в {exe_path}: {pe_anomalies}")
+                    self.db.insert_netsec_alert('PROCESS_PE_ANOMALY',
+                                               f'Process {name} shows PE anomalies: {pe_anomalies}',
+                                               'CRITICAL',
+                                               f"Process: {name}, Exe: {exe_path}, PE anomalies: {pe_anomalies}")
+
         # Trigger YARA scan on exe
         if exe_path and os.path.exists(exe_path) and self.yara_scanner.rules:
             results = self.yara_scanner.scan_file(exe_path)

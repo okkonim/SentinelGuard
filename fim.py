@@ -4,6 +4,7 @@ import time
 import json
 from database import Database
 from yara_scanner import YARAScanner
+from pe_analyzer import PEAnalyzer
 import logging
 
 logger = logging.getLogger(__name__)
@@ -13,6 +14,7 @@ class FIM:
         self.config_path = config_path
         self.db = Database(db_name)
         self.yara_scanner = YARAScanner(db_name)
+        self.pe_analyzer = PEAnalyzer(db_name)
         self.monitor_paths = []
         self.check_interval = 4
         self.file_hashes = {}
@@ -105,6 +107,27 @@ class FIM:
     def handle_file_change(self, file_path, event_type, criticality):
         self.db.insert_fim_event(file_path, event_type, criticality)
         print(f"FIM Оповещение: {event_type} для {file_path}")
+
+        # Check if PE file and trigger PE analysis
+        if self.pe_analyzer.is_pe_file(file_path):
+            print(f"Запуск PE анализа для {file_path}")
+            pe_result = self.pe_analyzer.analyze_file(file_path)
+            if pe_result:
+                # Check for anomalies
+                has_anomalies = False
+                for section in pe_result['sections']:
+                    if section['anomalies']:
+                        has_anomalies = True
+                        break
+                for imp in pe_result['imports']:
+                    if imp['suspicious']:
+                        has_anomalies = True
+                        break
+
+                if has_anomalies:
+                    print(f"PE анализ обнаружил аномалии в {file_path}")
+                    self.db.insert_netsec_alert('PE_ANOMALY', f'PE file anomalies detected in {file_path}', 'HIGH', str(pe_result))
+
         # Trigger YARA scan
         if self.yara_scanner.rules:
             results = self.yara_scanner.scan_file(file_path)

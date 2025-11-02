@@ -9,6 +9,7 @@ from process_monitor import ProcessMonitor
 from database import Database
 from network_monitor import NetworkMonitor
 from yara_scanner import YARAScanner
+from pe_analyzer import PEAnalyzer
 
 class Firewall:
     def __init__(self, config_path='config.json'):
@@ -19,6 +20,7 @@ class Firewall:
         self.process_monitor = ProcessMonitor(config_path)
         self.network_monitor = NetworkMonitor(external_db=self.db)
         self.yara_scanner = YARAScanner()
+        self.pe_analyzer = PEAnalyzer()
         self.threads = []
         self.load_config()
 
@@ -89,6 +91,53 @@ class Firewall:
         else:
             print(f"No YARA matches found in {path}")
 
+    def manual_pe_analysis(self, path):
+        """Manual PE analysis of file"""
+        if not os.path.isfile(path):
+            print(f"File {path} does not exist")
+            return
+
+        if not self.pe_analyzer.is_pe_file(path):
+            print(f"File {path} is not a PE file")
+            return
+
+        print(f"Analyzing PE file: {path}")
+        result = self.pe_analyzer.analyze_file(path)
+        if result:
+            print("PE Analysis Results:")
+            print(f"  Architecture: {result['header'].get('architecture', 'Unknown')}")
+            print(f"  Entry Point: 0x{result['header'].get('entry_point', 0):08x}")
+            print(f"  SHA-256: {result['sha256'][:16]}...")
+            print(f"  Sections: {len(result['sections'])}")
+            for section in result['sections']:
+                anomalies = f" [{section['anomalies']}]" if section['anomalies'] else ""
+                print(f"    {section['name']}: entropy={section['entropy']:.2f}{anomalies}")
+            suspicious_imports = [imp for imp in result['imports'] if imp['suspicious']]
+            print(f"  Suspicious Imports: {len(suspicious_imports)}")
+            for imp in suspicious_imports:
+                print(f"    {imp['function']} ({imp['dll']})")
+        else:
+            print("PE analysis failed")
+
+    def view_pe_reports(self, limit=10):
+        """View PE analysis reports"""
+        files = self.db.query_pe_files(limit)
+        print("Recent PE Files:")
+        for file in files:
+            print(f"  {file[1]}: {file[2]} ({file[4] or 'Unknown arch'})")
+
+        sections = self.db.query_pe_sections(limit=limit)
+        print(f"\nRecent PE Sections (last {limit}):")
+        for section in sections:
+            anomalies = f" [{section[7]}]" if section[7] else ""
+            print(f"  File {section[1]}: {section[2]} entropy={section[6]:.2f}{anomalies}")
+
+        imports = self.db.query_pe_imports(limit=limit)
+        print(f"\nRecent PE Imports (last {limit}):")
+        for imp in imports:
+            suspicious = " [SUSPICIOUS]" if imp[4] else ""
+            print(f"  File {imp[1]}: {imp[3]} ({imp[2]}){suspicious}")
+
     def view_yara_rules(self):
         """Display loaded YARA rules"""
         if self.yara_scanner.rules:
@@ -137,7 +186,7 @@ class Firewall:
 
 def main():
     parser = argparse.ArgumentParser(description="Гибридная система обнаружения угроз")
-    parser.add_argument('command', choices=['start', 'stop', 'logs', 'reload', 'netsec-scan', 'baseline', 'compare', 'scan', 'rules'], help="Команда для выполнения")
+    parser.add_argument('command', choices=['start', 'stop', 'logs', 'reload', 'netsec-scan', 'baseline', 'compare', 'scan', 'rules', 'pe-analyze', 'pe-reports'], help="Команда для выполнения")
     parser.add_argument('--table', choices=['network_events', 'fim_events', 'process_events', 'netsec_alerts', 'yara_events'], help="Таблица для просмотра логов")
     parser.add_argument('--limit', type=int, default=10, help="Количество записей логов для отображения")
     parser.add_argument('--path', help="Путь для сканирования (для команды scan)")
@@ -173,6 +222,13 @@ def main():
         firewall.manual_scan(args.path)
     elif args.command == 'rules':
         firewall.view_yara_rules()
+    elif args.command == 'pe-analyze':
+        if not args.path:
+            print("Пожалуйста, укажите --path для PE анализа")
+            return
+        firewall.manual_pe_analysis(args.path)
+    elif args.command == 'pe-reports':
+        firewall.view_pe_reports(args.limit)
     elif args.command == 'stop':
         firewall.stop()
     else:

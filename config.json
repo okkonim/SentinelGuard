@@ -15,5 +15,9 @@
     "process_monitor": {
         "check_interval": 5,
         "network_threshold": 1000000
+    },
+    "pe_analysis": {
+        "entropy_threshold": 6.5,
+        "enable_auto_analysis": true
     }
 }
