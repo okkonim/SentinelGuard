@@ -1,7 +1,7 @@
 rule Example_Malware_Signature {
     meta:
         description = "Example malware signature for testing"
-        author = "BlackboxAI"
+        author = "author"
         date = "2024"
     strings:
         $mz = { 4D 5A }
@@ -13,7 +13,7 @@ rule Example_Malware_Signature {
 rule Suspicious_Process {
     meta:
         description = "Detects suspicious process behavior"
-        author = "BlackboxAI"
+        author = "author"
     strings:
         $network_call = "connect" nocase
         $file_write = "write" nocase
@@ -24,7 +24,7 @@ rule Suspicious_Process {
 rule Zero_Day_Example {
     meta:
         description = "Example zero-day pattern"
-        author = "BlackboxAI"
+        author = "author"
     strings:
         $unknown_pattern = { 90 90 90 90 90 90 90 90 }  // NOP sled example
     condition:

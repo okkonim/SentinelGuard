@@ -34,12 +34,19 @@ class YARAScanner:
             matches = self.rules.match(file_path)
             results = []
             for match in matches:
+                try:
+                    # Try new API first
+                    strings_info = [{'offset': s.offset, 'matched_data': s.matched_data.hex() if hasattr(s, 'matched_data') and s.matched_data else '', 'identifier': s.identifier} for s in match.strings]
+                except AttributeError:
+                    # Fallback to old API or simplified format
+                    strings_info = [{'identifier': str(s)} for s in match.strings]
+
                 result = {
                     'rule_name': match.rule,
                     'file_path': file_path,
-                    'tags': match.tags,
-                    'meta': match.meta,
-                    'strings': [{'offset': s[0], 'string': s[1], 'identifier': s[2]} for s in match.strings]
+                    'tags': list(match.tags) if hasattr(match, 'tags') and match.tags else [],
+                    'meta': dict(match.meta) if hasattr(match, 'meta') and match.meta else {},
+                    'strings': strings_info
                 }
                 results.append(result)
                 # Log to database

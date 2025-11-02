@@ -2,6 +2,7 @@ import argparse
 import threading
 import json
 import logging
+import os
 from network_capture import NetworkCapture
 from fim import FIM
 from process_monitor import ProcessMonitor
@@ -91,11 +92,10 @@ class Firewall:
     def view_yara_rules(self):
         """Display loaded YARA rules"""
         if self.yara_scanner.rules:
-            print("Loaded YARA rules:")
-            for namespace, rules in self.yara_scanner.rules.items():
-                print(f"  Namespace: {namespace}")
-                for rule in rules:
-                    print(f"    {rule.identifier}")
+            print("YARA rules loaded successfully")
+            # Note: YARA Rules object doesn't expose rule names directly
+            # We can show that rules are compiled from config
+            print("Rules compiled from config.json")
         else:
             print("No YARA rules loaded")
 
