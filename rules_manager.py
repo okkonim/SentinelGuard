@@ -11,10 +11,10 @@ class RulesManager:
             with open(self.rules_file, 'r') as f:
                 return json.load(f)
         except FileNotFoundError:
-            print(f"Rules file {self.rules_file} not found.")
+            print(f"Файл правил {self.rules_file} не найден.")
             return []
         except json.JSONDecodeError:
-            print(f"Error decoding JSON from {self.rules_file}.")
+            print(f"Ошибка декодирования JSON из {self.rules_file}.")
             return []
 
     def match_ip(self, packet_ip, rule_ip):

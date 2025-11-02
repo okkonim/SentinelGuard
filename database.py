@@ -12,8 +12,14 @@ class Database:
         self.conn = None
         self.create_tables()
 
+    def get_connection(self):
+        """Get a thread-safe connection"""
+        if not hasattr(self, '_conn') or self._conn is None:
+            self._conn = sqlite3.connect(self.db_name, check_same_thread=False)
+        return self._conn
+
     def create_tables(self):
-        self.conn = sqlite3.connect(self.db_name)
+        self.conn = self.get_connection()
         cursor = self.conn.cursor()
 
         # Network events table
@@ -54,28 +60,46 @@ class Database:
             )
         ''')
 
+        # NetSec Sentinel alerts table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS netsec_alerts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT,
+                alert_type TEXT,
+                description TEXT,
+                severity TEXT,
+                details TEXT
+            )
+        ''')
+
         self.conn.commit()
 
     def insert_network_event(self, source_ip, dest_ip, source_port, dest_port, protocol, action, criticality='INFO'):
         timestamp = datetime.datetime.now().isoformat()
-        cursor = self.conn.cursor()
+        conn = self.get_connection()
+        cursor = conn.cursor()
         cursor.execute('''
             INSERT INTO network_events (timestamp, source_ip, dest_ip, source_port, dest_port, protocol, action, criticality)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ''', (timestamp, source_ip, dest_ip, source_port, dest_port, protocol, action, criticality))
-        self.conn.commit()
-        logger.info(f"Сетевое событие: {source_ip}:{source_port} -> {dest_ip}:{dest_port} ({protocol}) - {action}")
+        conn.commit()
+        logger.info(f"Network event: {source_ip}:{source_port} -> {dest_ip}:{dest_port} ({protocol}) - {action}")
 
     def insert_fim_event(self, file_path, event_type, criticality='WARNING'):
         timestamp = datetime.datetime.now().isoformat()
-        cursor = self.conn.cursor()
+        conn = self.get_connection()
+        cursor = conn.cursor()
         cursor.execute('''
             INSERT INTO fim_events (timestamp, file_path, event_type, criticality)
             VALUES (?, ?, ?, ?)
         ''', (timestamp, file_path, event_type, criticality))
-        self.conn.commit()
+        conn.commit()
         logger.warning(f"FIM событие: {event_type} для {file_path}")
 
+    def insert_process_event(self, pid, process_name, event_type, criticality='INFO'):
+        timestamp = datetime.datetime.now().isoformat()
+        conn = self.get_connection()
+        cursor = conn.cursor()
     def insert_process_event(self, pid, process_name, event_type, criticality='INFO'):
         timestamp = datetime.datetime.now().isoformat()
         cursor = self.conn.cursor()
@@ -85,6 +109,16 @@ class Database:
         ''', (timestamp, pid, process_name, event_type, criticality))
         self.conn.commit()
         logger.info(f"Событие процесса: {process_name} (PID {pid}) - {event_type}")
+
+    def insert_netsec_alert(self, alert_type, description, severity='medium', details=None):
+        timestamp = datetime.datetime.now().isoformat()
+        cursor = self.conn.cursor()
+        cursor.execute('''
+            INSERT INTO netsec_alerts (timestamp, alert_type, description, severity, details)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (timestamp, alert_type, description, severity, details))
+        self.conn.commit()
+        logger.warning(f"NetSec Оповещение [{severity.upper()}]: {description}")
 
     def query_events(self, table, limit=10):
         cursor = self.conn.cursor()

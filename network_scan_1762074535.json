@@ -1,0 +1,299 @@
+{
+  "timestamp": "2025-11-02T09:08:54.927676",
+  "connections": [
+    {
+      "laddr": [
+        "192.168.221.130",
+        68
+      ],
+      "raddr": [],
+      "status": "NONE",
+      "pid": null,
+      "type": "udp",
+      "family": 2,
+      "conn_type": 2
+    },
+    {
+      "laddr": [
+        "192.168.221.130",
+        60480
+      ],
+      "raddr": [
+        "216.24.57.251",
+        443
+      ],
+      "status": "ESTABLISHED",
+      "pid": 1668,
+      "type": "tcp",
+      "family": 2,
+      "conn_type": 1,
+      "name": "node",
+      "exe": "/home/userss/.vscode-server/cli/servers/Stable-7d842fb85a0275a4a8e4d7e040d2625abbf7f084/server/node",
+      "cmdline": "/home/userss/.vscode-server/cli/servers/Stable-7d842fb85a0275a4a8e4d7e040d2625abbf7f084/server/node --dns-result-order=ipv4first /home/userss/.vscode-server/cli/servers/Stable-7d842fb85a0275a4a8e4d7e040d2625abbf7f084/server/out/bootstrap-fork --type=extensionHost --transformURIs --useHostProxy=false",
+      "create_time": 1762071472.35,
+      "ppid": 1465,
+      "username": "userss"
+    },
+    {
+      "laddr": [
+        "127.0.0.1",
+        39996
+      ],
+      "raddr": [
+        "127.0.0.1",
+        36529
+      ],
+      "status": "ESTABLISHED",
+      "pid": null,
+      "type": "tcp",
+      "family": 2,
+      "conn_type": 1
+    },
+    {
+      "laddr": [
+        "192.168.221.130",
+        43902
+      ],
+      "raddr": [
+        "216.24.57.251",
+        443
+      ],
+      "status": "TIME_WAIT",
+      "pid": null,
+      "type": "tcp",
+      "family": 2,
+      "conn_type": 1
+    },
+    {
+      "laddr": [
+        "127.0.0.53",
+        53
+      ],
+      "raddr": [],
+      "status": "LISTEN",
+      "pid": null,
+      "type": "tcp",
+      "family": 2,
+      "conn_type": 1
+    },
+    {
+      "laddr": [
+        "127.0.0.54",
+        53
+      ],
+      "raddr": [],
+      "status": "LISTEN",
+      "pid": null,
+      "type": "tcp",
+      "family": 2,
+      "conn_type": 1
+    },
+    {
+      "laddr": [
+        "::",
+        22
+      ],
+      "raddr": [],
+      "status": "LISTEN",
+      "pid": null,
+      "type": "tcp",
+      "family": 10,
+      "conn_type": 1
+    },
+    {
+      "laddr": [
+        "0.0.0.0",
+        22
+      ],
+      "raddr": [],
+      "status": "LISTEN",
+      "pid": null,
+      "type": "tcp",
+      "family": 2,
+      "conn_type": 1
+    },
+    {
+      "laddr": [
+        "127.0.0.1",
+        36529
+      ],
+      "raddr": [],
+      "status": "LISTEN",
+      "pid": 1621,
+      "type": "tcp",
+      "family": 2,
+      "conn_type": 1,
+      "name": "code-7d842fb85a0275a4a8e4d7e040d2625abbf7f084",
+      "exe": "/home/userss/.vscode-server/code-7d842fb85a0275a4a8e4d7e040d2625abbf7f084",
+      "cmdline": "/home/userss/.vscode-server/code-7d842fb85a0275a4a8e4d7e040d2625abbf7f084 command-shell --cli-data-dir /home/userss/.vscode-server/cli --parent-process-id 1603 --on-host=127.0.0.1 --on-port",
+      "create_time": 1762071471.09,
+      "ppid": 1603,
+      "username": "userss"
+    },
+    {
+      "laddr": [
+        "192.168.221.130",
+        52908
+      ],
+      "raddr": [
+        "8.47.69.6",
+        443
+      ],
+      "status": "TIME_WAIT",
+      "pid": null,
+      "type": "tcp",
+      "family": 2,
+      "conn_type": 1
+    },
+    {
+      "laddr": [
+        "192.168.221.130",
+        43886
+      ],
+      "raddr": [
+        "216.24.57.251",
+        443
+      ],
+      "status": "TIME_WAIT",
+      "pid": null,
+      "type": "tcp",
+      "family": 2,
+      "conn_type": 1
+    },
+    {
+      "laddr": [
+        "127.0.0.1",
+        36529
+      ],
+      "raddr": [
+        "127.0.0.1",
+        39996
+      ],
+      "status": "ESTABLISHED",
+      "pid": 1621,
+      "type": "tcp",
+      "family": 2,
+      "conn_type": 1,
+      "name": "code-7d842fb85a0275a4a8e4d7e040d2625abbf7f084",
+      "exe": "/home/userss/.vscode-server/code-7d842fb85a0275a4a8e4d7e040d2625abbf7f084",
+      "cmdline": "/home/userss/.vscode-server/code-7d842fb85a0275a4a8e4d7e040d2625abbf7f084 command-shell --cli-data-dir /home/userss/.vscode-server/cli --parent-process-id 1603 --on-host=127.0.0.1 --on-port",
+      "create_time": 1762071471.09,
+      "ppid": 1603,
+      "username": "userss"
+    },
+    {
+      "laddr": [
+        "127.0.0.53",
+        53
+      ],
+      "raddr": [],
+      "status": "NONE",
+      "pid": null,
+      "type": "udp",
+      "family": 2,
+      "conn_type": 2
+    },
+    {
+      "laddr": [
+        "192.168.221.130",
+        60472
+      ],
+      "raddr": [
+        "216.24.57.251",
+        443
+      ],
+      "status": "ESTABLISHED",
+      "pid": 1668,
+      "type": "tcp",
+      "family": 2,
+      "conn_type": 1,
+      "name": "node",
+      "exe": "/home/userss/.vscode-server/cli/servers/Stable-7d842fb85a0275a4a8e4d7e040d2625abbf7f084/server/node",
+      "cmdline": "/home/userss/.vscode-server/cli/servers/Stable-7d842fb85a0275a4a8e4d7e040d2625abbf7f084/server/node --dns-result-order=ipv4first /home/userss/.vscode-server/cli/servers/Stable-7d842fb85a0275a4a8e4d7e040d2625abbf7f084/server/out/bootstrap-fork --type=extensionHost --transformURIs --useHostProxy=false",
+      "create_time": 1762071472.35,
+      "ppid": 1465,
+      "username": "userss"
+    },
+    {
+      "laddr": [
+        "127.0.0.54",
+        53
+      ],
+      "raddr": [],
+      "status": "NONE",
+      "pid": null,
+      "type": "udp",
+      "family": 2,
+      "conn_type": 2
+    },
+    {
+      "laddr": [
+        "192.168.221.130",
+        22
+      ],
+      "raddr": [
+        "192.168.221.1",
+        56104
+      ],
+      "status": "ESTABLISHED",
+      "pid": null,
+      "type": "tcp",
+      "family": 2,
+      "conn_type": 1
+    }
+  ],
+  "suspicious_patterns": {
+    "suspicious_ports": [],
+    "unusual_connections": [],
+    "high_frequency_connections": [],
+    "encryption_tunnels": []
+  },
+  "rootkit_check": [
+    {
+      "type": "hidden_from_psutil",
+      "connections": [
+        "('127.0.0.54', 53):('0.0.0.0', 0)",
+        "('192.168.221.130', 22):('192.168.221.1', 56104)",
+        "('192.168.221.130', 60480):('216.24.57.251', 443)",
+        "('0.0.0.0', 22):('0.0.0.0', 0)",
+        "('192.168.221.130', 68):('0.0.0.0', 0)",
+        "('192.168.221.130', 43902):('216.24.57.251', 443)",
+        "('192.168.221.130', 60472):('216.24.57.251', 443)",
+        "('127.0.0.1', 39996):('127.0.0.1', 36529)",
+        "('127.0.0.1', 36529):('127.0.0.1', 39996)",
+        "('127.0.0.53', 53):('0.0.0.0', 0)",
+        "('127.0.0.1', 36529):('0.0.0.0', 0)"
+      ],
+      "severity": "high"
+    },
+    {
+      "type": "hidden_from_proc",
+      "connections": [
+        "addr(ip='192.168.221.130', port=60480):addr(ip='216.24.57.251', port=443)",
+        "addr(ip='127.0.0.1', port=36529):addr(ip='127.0.0.1', port=39996)",
+        "addr(ip='192.168.221.130', port=52908):addr(ip='8.47.69.6', port=443)",
+        "addr(ip='192.168.221.130', port=43902):addr(ip='216.24.57.251', port=443)",
+        "addr(ip='192.168.221.130', port=60472):addr(ip='216.24.57.251', port=443)",
+        "addr(ip='192.168.221.130', port=22):addr(ip='192.168.221.1', port=56104)",
+        "addr(ip='127.0.0.1', port=39996):addr(ip='127.0.0.1', port=36529)",
+        "addr(ip='192.168.221.130', port=43886):addr(ip='216.24.57.251', port=443)"
+      ],
+      "severity": "medium"
+    }
+  ],
+  "hidden_processes": [],
+  "alerts": [
+    {
+      "timestamp": "2025-11-02T09:08:54.898935",
+      "type": "rootkit_hiding",
+      "description": "Network hiding detected: hidden_from_psutil",
+      "severity": "high"
+    },
+    {
+      "timestamp": "2025-11-02T09:08:54.904313",
+      "type": "rootkit_hiding",
+      "description": "Network hiding detected: hidden_from_proc",
+      "severity": "medium"
+    }
+  ]
+}

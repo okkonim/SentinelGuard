@@ -19,17 +19,17 @@ class FIM:
 
     def monitor(self):
         self.running = True
-        print(f"Starting FIM monitoring for {self.file_path}")
+        print(f"Запуск FIM мониторинга для {self.file_path}")
         while self.running:
             time.sleep(self.check_interval)
             current_hash = self.get_file_hash()
             if current_hash != self.last_hash:
-                event_type = "File modified" if self.last_hash else "File created"
+                event_type = "Файл изменен" if self.last_hash else "Файл создан"
                 criticality = "CRITICAL" if self.last_hash else "INFO"
                 self.db.insert_fim_event(self.file_path, event_type, criticality)
-                print(f"FIM Alert: {event_type} for {self.file_path}")
+                print(f"FIM Оповещение: {event_type} для {self.file_path}")
                 self.last_hash = current_hash
 
     def stop(self):
         self.running = False
-        print("Stopping FIM monitoring")
+        print("Остановка FIM мониторинга")

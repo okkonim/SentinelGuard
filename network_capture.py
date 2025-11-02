@@ -5,7 +5,7 @@ import threading
 import time
 
 class NetworkCapture:
-    def __init__(self, interface='eth0', rules_file='rules.json', db_name='firewall.db'):
+    def __init__(self, interface='ens33', rules_file='rules.json', db_name='firewall.db'):
         self.interface = interface
         self.rules_manager = RulesManager(rules_file)
         self.db = Database(db_name)
@@ -38,18 +38,18 @@ class NetworkCapture:
         criticality = 'INFO' if action == 'ACCEPT' else 'WARNING'
         self.db.insert_network_event(source_ip, dest_ip, source_port, dest_port, protocol, action, criticality)
 
-        # For demonstration, print the action
-        print(f"Packet: {source_ip}:{source_port} -> {dest_ip}:{dest_port} ({protocol}) - {action}")
+        # Для демонстрации, вывод действия
+        print(f"Пакет: {source_ip}:{source_port} -> {dest_ip}:{dest_port} ({protocol}) - {action}")
 
     def start_capture(self):
         self.running = True
-        print(f"Starting packet capture on interface {self.interface}")
+        print(f"Запуск захвата пакетов на интерфейсе {self.interface}")
         sniff(iface=self.interface, prn=self.packet_callback, store=0, stop_filter=lambda x: not self.running)
 
     def stop_capture(self):
         self.running = False
-        print("Stopping packet capture")
+        print("Остановка захвата пакетов")
 
     def reload_rules(self):
         self.rules_manager.rules = self.rules_manager.load_rules()
-        print("Rules reloaded")
+        print("Правила перезагружены")

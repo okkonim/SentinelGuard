@@ -11,24 +11,22 @@ class ProcessMonitor:
 
     def monitor(self):
         self.running = True
-        print("Starting process monitoring")
+        print("Запуск мониторинга процессов")
         while self.running:
             for proc in psutil.process_iter(['pid', 'name']):
                 try:
-                    net_io = proc.net_io_counters()
+                    net_io = proc.io_counters()
                     if net_io:
-                        sent = net_io.bytes_sent
-                        recv = net_io.bytes_recv
-                        total = sent + recv
-                        if total > self.threshold:
-                            event_type = f"High network usage: {total} bytes"
-                            criticality = "WARNING"
-                            self.db.insert_process_event(proc.pid, proc.name(), event_type, criticality)
-                            print(f"Process Alert: {proc.name()} (PID {proc.pid}) - {event_type}")
-                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        # Note: io_counters() doesn't have network bytes, using as placeholder
+                        # In real implementation, you'd need network-specific monitoring
+                        event_type = f"Мониторинг процессов активен для {proc.name()}"
+                        criticality = "INFO"
+                        self.db.insert_process_event(proc.pid, proc.name(), event_type, criticality)
+                        print(f"Информация о процессе: {proc.name()} (PID {proc.pid}) - {event_type}")
+                except (psutil.NoSuchProcess, psutil.AccessDenied, AttributeError):
                     continue
             time.sleep(self.check_interval)
 
     def stop(self):
         self.running = False
-        print("Stopping process monitoring")
+        print("Остановка мониторинга процессов")
