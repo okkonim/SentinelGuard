@@ -80,6 +80,8 @@ celerybeat-schedule
 *.sage.py
 
 # Environments
+
+
 .env
 .venv
 env/
@@ -111,3 +113,4 @@ firewall.db
 *.db
 logs/
 *.log
+network_scan_*.json
