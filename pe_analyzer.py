@@ -31,13 +31,14 @@ class PEAnalyzer:
 
     def calculate_entropy(self, data):
         """Calculate Shannon entropy of byte data."""
-        if not data:
+        if not data or len(data) == 0:
             return 0.0
         entropy = 0.0
         data_len = len(data)
         for i in range(256):
-            p = data.count(i) / data_len
-            if p > 0:
+            count = data.count(i)
+            if count > 0:
+                p = count / data_len
                 entropy -= p * math.log2(p)
         return entropy
 
@@ -92,8 +93,16 @@ class PEAnalyzer:
                 # Read section data
                 section_data = None
                 if section.PointerToRawData and section.SizeOfRawData:
-                    pe.set_file_offset(section.PointerToRawData)
-                    section_data = pe.__data__[section.PointerToRawData:section.PointerToRawData + section.SizeOfRawData]
+                    try:
+                        section_data = section.get_data()
+                    except Exception:
+                        # Fallback to manual reading
+                        try:
+                            with open(pe.filename, 'rb') as f:
+                                f.seek(section.PointerToRawData)
+                                section_data = f.read(section.SizeOfRawData)
+                        except Exception:
+                            section_data = None
 
                 # Calculate entropy
                 entropy = self.calculate_entropy(section_data) if section_data else 0.0
@@ -180,6 +189,12 @@ class PEAnalyzer:
     def store_analysis(self, analysis_result):
         """Store analysis results in database."""
         try:
+            # Check if file already exists
+            existing = self.db.query_pe_files(sha256=analysis_result['sha256'])
+            if existing:
+                logger.info(f"PE file already analyzed: {analysis_result['file_path']}")
+                return
+
             # Insert file record
             file_id = self.db.insert_pe_file(
                 analysis_result['file_path'],
