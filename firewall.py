@@ -184,9 +184,114 @@ class Firewall:
         self.network_capture.reload_rules()
         self.reload_config()
 
+    def start_network_only(self):
+        print("Запуск модуля захвата сети...")
+        t = threading.Thread(target=self.network_capture.start_capture)
+        t.start()
+        print("Модуль захвата сети запущен. Нажмите Ctrl+C для остановки.")
+        try:
+            input()
+        except KeyboardInterrupt:
+            pass
+        self.network_capture.stop_capture()
+        t.join()
+        self.db.close()
+        print("Модуль захвата сети остановлен.")
+
+    def start_fim_only(self):
+        print("Запуск модуля FIM...")
+        t = threading.Thread(target=self.fim.monitor)
+        t.start()
+        print("Модуль FIM запущен. Нажмите Ctrl+C для остановки.")
+        try:
+            input()
+        except KeyboardInterrupt:
+            pass
+        self.fim.stop()
+        t.join()
+        self.db.close()
+        print("Модуль FIM остановлен.")
+
+    def start_process_only(self):
+        print("Запуск модуля мониторинга процессов...")
+        t = threading.Thread(target=self.process_monitor.monitor)
+        t.start()
+        print("Модуль мониторинга процессов запущен. Нажмите Ctrl+C для остановки.")
+        try:
+            input()
+        except KeyboardInterrupt:
+            pass
+        self.process_monitor.stop()
+        t.join()
+        self.db.close()
+        print("Модуль мониторинга процессов остановлен.")
+
+    def start_netsec_only(self):
+        print("Запуск модуля NetSec Sentinel...")
+        t = threading.Thread(target=self.network_monitor.start_monitoring)
+        t.start()
+        print("Модуль NetSec Sentinel запущен. Нажмите Ctrl+C для остановки.")
+        try:
+            input()
+        except KeyboardInterrupt:
+            pass
+        self.network_monitor.stop_monitoring()
+        t.join()
+        self.db.close()
+        print("Модуль NetSec Sentinel остановлен.")
+
+def interactive_menu(firewall):
+    while True:
+        print("\n=== Прототип программного межсетевого экрана ===")
+        print("1. Запустить все модули")
+        print("2. Запустить модуль захвата сети")
+        print("3. Запустить модуль FIM")
+        print("4. Запустить модуль мониторинга процессов")
+        print("5. Запустить модуль NetSec Sentinel")
+        print("6. Просмотр логов")
+        print("7. Перезагрузка правил")
+        print("8. NetSec сканирование")
+        print("9. Создание базовой линии")
+        print("10. Сравнение с базовой линией")
+        print("0. Выход")
+        choice = input("Выберите опцию (0-10): ").strip()
+
+        if choice == '1':
+            firewall.start()
+        elif choice == '2':
+            firewall.start_network_only()
+        elif choice == '3':
+            firewall.start_fim_only()
+        elif choice == '4':
+            firewall.start_process_only()
+        elif choice == '5':
+            firewall.start_netsec_only()
+        elif choice == '6':
+            table = input("Таблица (network_events, fim_events, process_events, netsec_alerts): ").strip()
+            if table in ['network_events', 'fim_events', 'process_events', 'netsec_alerts']:
+                limit = input("Количество записей (по умолчанию 10): ").strip()
+                limit = int(limit) if limit.isdigit() else 10
+                firewall.view_logs(table, limit)
+            else:
+                print("Неверная таблица.")
+        elif choice == '7':
+            firewall.reload_rules()
+            print("Правила перезагружены.")
+        elif choice == '8':
+            firewall.run_netsec_scan()
+        elif choice == '9':
+            firewall.create_baseline()
+        elif choice == '10':
+            firewall.compare_baseline()
+        elif choice == '0':
+            print("Выход.")
+            break
+        else:
+            print("Неверный выбор. Попробуйте снова.")
+
 def main():
     parser = argparse.ArgumentParser(description="Гибридная система обнаружения угроз")
-    parser.add_argument('command', choices=['start', 'stop', 'logs', 'reload', 'netsec-scan', 'baseline', 'compare', 'scan', 'rules', 'pe-analyze', 'pe-reports'], help="Команда для выполнения")
+    parser.add_argument('command', nargs='?', choices=['start', 'stop', 'logs', 'reload', 'netsec-scan', 'baseline', 'compare', 'start-network', 'start-fim', 'start-process', 'start-netsec', 'interactive', 'scan', 'rules', 'pe-analyze', 'pe-reports'], help="Команда для выполнения")
     parser.add_argument('--table', choices=['network_events', 'fim_events', 'process_events', 'netsec_alerts', 'yara_events'], help="Таблица для просмотра логов")
     parser.add_argument('--limit', type=int, default=10, help="Количество записей логов для отображения")
     parser.add_argument('--path', help="Путь для сканирования (для команды scan)")
@@ -215,6 +320,16 @@ def main():
         firewall.create_baseline()
     elif args.command == 'compare':
         firewall.compare_baseline()
+    elif args.command == 'start-network':
+        firewall.start_network_only()
+    elif args.command == 'start-fim':
+        firewall.start_fim_only()
+    elif args.command == 'start-process':
+        firewall.start_process_only()
+    elif args.command == 'start-netsec':
+        firewall.start_netsec_only()
+    elif args.command == 'interactive' or args.command is None:
+        interactive_menu(firewall)
     elif args.command == 'scan':
         if not args.path:
             print("Пожалуйста, укажите --path для сканирования")

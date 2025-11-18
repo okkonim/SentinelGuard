@@ -49,6 +49,25 @@ class ProcessMonitor:
         self.running = True
         logger.info("Запуск мониторинга процессов")
 
+        # Display current processes
+        print("Текущие процессы:")
+        print(f"{'PID':<10} {'PPID':<10} {'Имя':<20} {'Путь':<50} {'Аргументы'}")
+        print("-" * 100)
+        try:
+            for proc in psutil.process_iter(attrs=['pid', 'ppid', 'name', 'exe', 'cmdline']):
+                try:
+                    info = proc.info
+                    pid = info.get('pid', 'N/A')
+                    ppid = info.get('ppid', 'N/A')
+                    name = info.get('name', 'N/A')
+                    exe = info.get('exe', 'N/A')
+                    cmdline = ' '.join(info.get('cmdline', [])) if info.get('cmdline') else 'N/A'
+                    print(f"{pid:<10} {ppid:<10} {name:<20} {exe:<50} {cmdline}")
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    continue
+        except Exception:
+            logger.exception('Failed to list processes')
+
         # Initial snapshot
         try:
             for proc in psutil.process_iter(['pid', 'name', 'exe']):
