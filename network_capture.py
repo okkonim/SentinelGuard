@@ -34,7 +34,12 @@ class NetworkCapture:
             return
 
         try:
-            action = self.rules_manager.check_packet(packet)
+            result = self.rules_manager.check_packet(packet)
+            if isinstance(result, tuple):
+                action, rule_id = result
+            else:
+                action = result
+                rule_id = None
 
             # Extract details for logging
             source_ip = dest_ip = source_port = dest_port = protocol = None
@@ -56,12 +61,13 @@ class NetworkCapture:
             # Log to database
             criticality = 'INFO' if action == 'ACCEPT' else 'WARNING'
             try:
-                self.db.insert_network_event(source_ip, dest_ip, source_port, dest_port, protocol, action, criticality)
+                self.db.insert_network_event(source_ip, dest_ip, source_port, dest_port, protocol, action, rule_id, 'network_capture', criticality)
             except Exception as e:
                 logger.error(f"Failed to insert network event: {e}")
 
             # Для демонстрации, вывод действия
-            logger.info(f"Пакет: {source_ip}:{source_port} -> {dest_ip}:{dest_port} ({protocol}) - {action}")
+            rule_info = f" (rule {rule_id})" if rule_id else " (implicit deny)"
+            print(f"Пакет [network_capture]: {source_ip}:{source_port} -> {dest_ip}:{dest_port} ({protocol}) - {action}{rule_info}")
         except Exception as e:
             logger.exception(f"Exception in packet_callback: {e}")
 

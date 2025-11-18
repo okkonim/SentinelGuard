@@ -33,6 +33,8 @@ class Database:
                 dest_port INTEGER,
                 protocol TEXT,
                 action TEXT,
+                rule_id INTEGER,
+                module TEXT,
                 criticality TEXT
             )
         ''')
@@ -127,16 +129,16 @@ class Database:
 
         self.conn.commit()
 
-    def insert_network_event(self, source_ip, dest_ip, source_port, dest_port, protocol, action, criticality='INFO'):
+    def insert_network_event(self, source_ip, dest_ip, source_port, dest_port, protocol, action, rule_id, module, criticality='INFO'):
         timestamp = datetime.datetime.now().isoformat()
         conn = self.get_connection()
         cursor = conn.cursor()
         cursor.execute('''
-            INSERT INTO network_events (timestamp, source_ip, dest_ip, source_port, dest_port, protocol, action, criticality)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (timestamp, source_ip, dest_ip, source_port, dest_port, protocol, action, criticality))
+            INSERT INTO network_events (timestamp, source_ip, dest_ip, source_port, dest_port, protocol, action, rule_id, module, criticality)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (timestamp, source_ip, dest_ip, source_port, dest_port, protocol, action, rule_id, module, criticality))
         conn.commit()
-        logger.info(f"Network event: {source_ip}:{source_port} -> {dest_ip}:{dest_port} ({protocol}) - {action}")
+        logger.info(f"Network event [{module}]: {source_ip}:{source_port} -> {dest_ip}:{dest_port} ({protocol}) - {action} (rule {rule_id})")
 
     def insert_fim_event(self, file_path, event_type, criticality='WARNING'):
         timestamp = datetime.datetime.now().isoformat()

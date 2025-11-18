@@ -37,7 +37,7 @@ class RulesManager:
             dest_ip = packet['IP'].dst
             protocol = packet['IP'].proto
         else:
-            return "DROP"  # Drop non-IP packets
+            return ("DROP", None)  # Drop non-IP packets
 
         source_port = dest_port = None
         if packet.haslayer('TCP'):
@@ -61,7 +61,7 @@ class RulesManager:
                  (rule['protocol'] == 'tcp' and protocol == 6) or
                  (rule['protocol'] == 'udp' and protocol == 17) or
                  (rule['protocol'] == 'icmp' and protocol == 1))):
-                return rule['action']
+                return (rule['action'], rule['id'])
 
         # Implicit deny
-        return "DROP"
+        return ("DROP", None)
