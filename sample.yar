@@ -1,14 +1,3 @@
-rule Example_Malware_Signature {
-    meta:
-        description = "Example malware signature for testing"
-        author = "author"
-        date = "2024"
-    strings:
-        $mz = { 4D 5A }
-        $suspicious_string = "malware" nocase
-    condition:
-        $mz at 0 and $suspicious_string
-}
 
 rule Suspicious_Process {
     meta:

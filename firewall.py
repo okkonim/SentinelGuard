@@ -92,7 +92,7 @@ class Firewall:
             print(f"No YARA matches found in {path}")
 
     def manual_pe_analysis(self, path):
-        """Manual PE analysis of file"""
+        """Manual PE analysis of file with YARA integration"""
         if not os.path.isfile(path):
             print(f"File {path} does not exist")
             return
@@ -102,6 +102,12 @@ class Firewall:
             return
 
         print(f"Analyzing PE file: {path}")
+
+        # Run YARA scan first
+        yara_results = self.yara_scanner.scan_file(path) if self.yara_scanner.rules else []
+        yara_matches = len(yara_results) > 0
+
+        # Run PE analysis
         result = self.pe_analyzer.analyze_file(path)
         if result:
             print("PE Analysis Results:")
@@ -116,27 +122,67 @@ class Firewall:
             print(f"  Suspicious Imports: {len(suspicious_imports)}")
             for imp in suspicious_imports:
                 print(f"    {imp['function']} ({imp['dll']})")
+
+            # Determine threat level based on PE and YARA
+            pe_suspicious = any(section['anomalies'] for section in result['sections']) or suspicious_imports
+            threat_reasons = []
+
+            if pe_suspicious:
+                reasons = []
+                if any(section['anomalies'] for section in result['sections']):
+                    high_entropy_sections = [s['name'] for s in result['sections'] if 'high_entropy' in s['anomalies']]
+                    if high_entropy_sections:
+                        reasons.append(f"высокая энтропия в секциях: {', '.join(high_entropy_sections)}")
+                    suspicious_names = [s['name'] for s in result['sections'] if 'suspicious_name' in s['anomalies']]
+                    if suspicious_names:
+                        reasons.append(f"подозрительные имена секций: {', '.join(suspicious_names)}")
+                if suspicious_imports:
+                    reasons.append(f"подозрительные импорты: {', '.join([imp['function'] for imp in suspicious_imports])}")
+                threat_reasons.append(f"Модуль PE: {', '.join(reasons)}")
+
+            if yara_matches and not pe_suspicious:
+                yara_rules = [r['rule_name'] for r in yara_results]
+                threat_reasons.append(f"Модуль YARA (неизвестная угроза): правила {', '.join(yara_rules)}")
+            elif yara_matches and pe_suspicious:
+                yara_rules = [r['rule_name'] for r in yara_results]
+                threat_reasons.append(f"Модуль YARA: правила {', '.join(yara_rules)}")
+
+            if threat_reasons:
+                print(f"  Статус: ПОДОЗРИТЕЛЬНЫЙ")
+                for reason in threat_reasons:
+                    print(f"    - {reason}")
+            else:
+                print(f"  Статус: ЧИСТ")
         else:
             print("PE analysis failed")
 
     def view_pe_reports(self, limit=10):
         """View PE analysis reports"""
         files = self.db.query_pe_files(limit)
-        print("Recent PE Files:")
-        for file in files:
-            print(f"  {file[1]}: {file[2]} ({file[4] or 'Unknown arch'})")
+        if files:
+            print("Recent PE Files:")
+            for file in files:
+                print(f"  {file[2]}: {file[3]} ({file[4] or 'Unknown arch'})")
+        else:
+            print("No PE files analyzed yet.")
 
         sections = self.db.query_pe_sections(limit=limit)
-        print(f"\nRecent PE Sections (last {limit}):")
-        for section in sections:
-            anomalies = f" [{section[7]}]" if section[7] else ""
-            print(f"  File {section[1]}: {section[2]} entropy={section[6]:.2f}{anomalies}")
+        if sections:
+            print(f"\nRecent PE Sections (last {limit}):")
+            for section in sections:
+                anomalies = f" [{section[7]}]" if section[7] else ""
+                print(f"  File {section[1]}: {section[2]} entropy={section[6]:.2f}{anomalies}")
+        else:
+            print("No PE sections found.")
 
         imports = self.db.query_pe_imports(limit=limit)
-        print(f"\nRecent PE Imports (last {limit}):")
-        for imp in imports:
-            suspicious = " [SUSPICIOUS]" if imp[4] else ""
-            print(f"  File {imp[1]}: {imp[3]} ({imp[2]}){suspicious}")
+        if imports:
+            print(f"\nRecent PE Imports (last {limit}):")
+            for imp in imports:
+                suspicious = " [SUSPICIOUS]" if imp[4] else ""
+                print(f"  File {imp[1]}: {imp[3]} ({imp[2]}){suspicious}")
+        else:
+            print("No PE imports found.")
 
     def view_yara_rules(self):
         """Display loaded YARA rules"""
@@ -253,8 +299,12 @@ def interactive_menu(firewall):
         print("8. NetSec сканирование")
         print("9. Создание базовой линии")
         print("10. Сравнение с базовой линией")
+        print("11. Ручное YARA сканирование")
+        print("12. Просмотр YARA правил")
+        print("13. PE анализ файла")
+        print("14. Просмотр PE отчетов")
         print("0. Выход")
-        choice = input("Выберите опцию (0-10): ").strip()
+        choice = input("Выберите опцию (0-14): ").strip()
 
         if choice == '1':
             firewall.start()
@@ -267,8 +317,8 @@ def interactive_menu(firewall):
         elif choice == '5':
             firewall.start_netsec_only()
         elif choice == '6':
-            table = input("Таблица (network_events, fim_events, process_events, netsec_alerts): ").strip()
-            if table in ['network_events', 'fim_events', 'process_events', 'netsec_alerts']:
+            table = input("Таблица (network_events, fim_events, process_events, netsec_alerts, yara_events): ").strip()
+            if table in ['network_events', 'fim_events', 'process_events', 'netsec_alerts', 'yara_events']:
                 limit = input("Количество записей (по умолчанию 10): ").strip()
                 limit = int(limit) if limit.isdigit() else 10
                 firewall.view_logs(table, limit)
@@ -283,6 +333,24 @@ def interactive_menu(firewall):
             firewall.create_baseline()
         elif choice == '10':
             firewall.compare_baseline()
+        elif choice == '11':
+            path = input("Путь к файлу или директории для сканирования: ").strip()
+            if path:
+                firewall.manual_scan(path)
+            else:
+                print("Путь не указан.")
+        elif choice == '12':
+            firewall.view_yara_rules()
+        elif choice == '13':
+            path = input("Путь к PE файлу для анализа: ").strip()
+            if path:
+                firewall.manual_pe_analysis(path)
+            else:
+                print("Путь не указан.")
+        elif choice == '14':
+            limit = input("Количество записей (по умолчанию 10): ").strip()
+            limit = int(limit) if limit.isdigit() else 10
+            firewall.view_pe_reports(limit)
         elif choice == '0':
             print("Выход.")
             break

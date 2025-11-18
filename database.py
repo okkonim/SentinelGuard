@@ -214,9 +214,12 @@ class Database:
         ''', (file_id, dll, function, 1 if suspicious else 0))
         conn.commit()
 
-    def query_pe_files(self, limit=10):
+    def query_pe_files(self, limit=10, sha256=None):
         cursor = self.conn.cursor()
-        cursor.execute('SELECT * FROM pe_files ORDER BY timestamp DESC LIMIT ?', (limit,))
+        if sha256:
+            cursor.execute('SELECT * FROM pe_files WHERE sha256 = ? ORDER BY timestamp DESC LIMIT ?', (sha256, limit))
+        else:
+            cursor.execute('SELECT * FROM pe_files ORDER BY timestamp DESC LIMIT ?', (limit,))
         return cursor.fetchall()
 
     def query_pe_sections(self, file_id=None, limit=10):

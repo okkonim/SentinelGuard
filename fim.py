@@ -135,6 +135,11 @@ class FIM:
                 print(f"YARA обнаружил совпадения в {file_path}: {[r['rule_name'] for r in results]}")
                 for result in results:
                     self.db.insert_yara_event(file_path, result['rule_name'], 'MATCH', 'CRITICAL', str(result))
+            else:
+                # No YARA matches but file changed - potential unknown threat
+                if event_type == "Файл изменен":
+                    print(f"YARA: нет совпадений в {file_path} - потенциальная неизвестная угроза")
+                    self.db.insert_netsec_alert('UNKNOWN_THREAT', f'No YARA matches but file changed: {file_path}', 'MEDIUM', 'File modified without YARA detection')
 
     def stop(self):
         self.running = False
