@@ -8,6 +8,7 @@ from fim import FIM
 from process_monitor import ProcessMonitor
 from database import Database
 from network_monitor import NetworkMonitor
+from network_sniffer import NetworkSniffer
 from yara_scanner import YARAScanner
 from pe_analyzer import PEAnalyzer
 
@@ -16,6 +17,7 @@ class Firewall:
         self.config_path = config_path
         self.db = Database()
         self.network_capture = NetworkCapture()
+        self.network_sniffer = NetworkSniffer(db_name='firewall.db', config_path=config_path)
         self.fim = FIM(config_path)
         self.process_monitor = ProcessMonitor(config_path)
         self.network_monitor = NetworkMonitor(external_db=self.db)
@@ -42,8 +44,8 @@ class Firewall:
     def start(self):
         print("Запуск прототипа межсетевого экрана...")
 
-        # Start network capture
-        t1 = threading.Thread(target=self.network_capture.start_capture)
+        # Start network sniffer (advanced capture with threat detection)
+        t1 = threading.Thread(target=self.network_sniffer.start_sniffing)
         t1.start()
         self.threads.append(t1)
 
@@ -62,7 +64,7 @@ class Firewall:
 
     def stop(self):
         print("Остановка межсетевого экрана...")
-        self.network_capture.stop_capture()
+        self.network_sniffer.stop_sniffing()
         self.fim.stop()
         self.process_monitor.stop()
         for t in self.threads:
@@ -230,19 +232,17 @@ class Firewall:
         self.network_capture.reload_rules()
         self.reload_config()
 
-    def start_network_only(self):
-        print("Запуск модуля захвата сети...")
-        t = threading.Thread(target=self.network_capture.start_capture)
-        t.start()
-        print("Модуль захвата сети запущен. Нажмите Ctrl+C для остановки.")
-        try:
-            input()
-        except KeyboardInterrupt:
-            pass
-        self.network_capture.stop_capture()
-        t.join()
+    def start_network_sniffer_only(self):
+        print("Запуск гибридного сетевого сниффера...")
+        if self.network_sniffer.start_sniffing():
+            print("Гибридный сетевой сниффер запущен. Нажмите Ctrl+C для остановки.")
+            try:
+                input()
+            except KeyboardInterrupt:
+                pass
+            self.network_sniffer.stop_sniffing()
         self.db.close()
-        print("Модуль захвата сети остановлен.")
+        print("Гибридный сетевой сниффер остановлен.")
 
     def start_fim_only(self):
         print("Запуск модуля FIM...")
@@ -290,7 +290,7 @@ def interactive_menu(firewall):
     while True:
         print("\n=== Прототип программного межсетевого экрана ===")
         print("1. Запустить все модули")
-        print("2. Запустить модуль захвата сети")
+        print("2. Запустить гибридный сетевой сниффер")
         print("3. Запустить модуль FIM")
         print("4. Запустить модуль мониторинга процессов")
         print("5. Запустить модуль NetSec Sentinel")
@@ -309,7 +309,7 @@ def interactive_menu(firewall):
         if choice == '1':
             firewall.start()
         elif choice == '2':
-            firewall.start_network_only()
+            firewall.start_network_sniffer_only()
         elif choice == '3':
             firewall.start_fim_only()
         elif choice == '4':
@@ -359,7 +359,7 @@ def interactive_menu(firewall):
 
 def main():
     parser = argparse.ArgumentParser(description="Гибридная система обнаружения угроз")
-    parser.add_argument('command', nargs='?', choices=['start', 'stop', 'logs', 'reload', 'netsec-scan', 'baseline', 'compare', 'start-network', 'start-fim', 'start-process', 'start-netsec', 'interactive', 'scan', 'rules', 'pe-analyze', 'pe-reports'], help="Команда для выполнения")
+    parser.add_argument('command', nargs='?', choices=['start', 'stop', 'logs', 'reload', 'netsec-scan', 'baseline', 'compare', 'start-sniffer', 'start-fim', 'start-process', 'start-netsec', 'interactive', 'scan', 'rules', 'pe-analyze', 'pe-reports'], help="Команда для выполнения")
     parser.add_argument('--table', choices=['network_events', 'fim_events', 'process_events', 'netsec_alerts', 'yara_events'], help="Таблица для просмотра логов")
     parser.add_argument('--limit', type=int, default=10, help="Количество записей логов для отображения")
     parser.add_argument('--path', help="Путь для сканирования (для команды scan)")
@@ -388,8 +388,8 @@ def main():
         firewall.create_baseline()
     elif args.command == 'compare':
         firewall.compare_baseline()
-    elif args.command == 'start-network':
-        firewall.start_network_only()
+    elif args.command == 'start-sniffer':
+        firewall.start_network_sniffer_only()
     elif args.command == 'start-fim':
         firewall.start_fim_only()
     elif args.command == 'start-process':

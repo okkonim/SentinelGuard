@@ -19,5 +19,11 @@
     "pe_analysis": {
         "entropy_threshold": 6.5,
         "enable_auto_analysis": true
+    },
+    "network_sniffer": {
+        "syn_flood_threshold": 100,
+        "icmp_flood_threshold": 50,
+        "beacon_threshold": 10,
+        "beacon_tolerance": 300
     }
 }
