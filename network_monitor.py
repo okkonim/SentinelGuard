@@ -109,7 +109,8 @@ class NetworkMonitor:
                     'pid': conn.pid,
                     'type': 'tcp' if conn.type == socket.SOCK_STREAM else 'udp',
                     'family': conn.family,  # Добавляем family для совместимости
-                    'conn_type': conn.type  # Добавляем type для совместимости
+                    'conn_type': conn.type,  # Добавляем type для совместимости
+                    'inode': None  # Попробуем заполнить для Linux ниже
                 }
 
                 # Получаем информацию о процессе
@@ -133,6 +134,41 @@ class NetworkMonitor:
             # На Windows без прав администратора это может быть частой проблемой
             # Логируем, но не прерываем выполнение
             logging.warning("Access denied when getting connection details. Run as admin/root for full info.")
+
+        # Продолжаем: попробуем обогатить данные на Linux
+
+        # На Linux: попробуем обогатить информацию, сопоставив записи /proc/net и inode
+        if sys.platform.startswith('linux'):
+            try:
+                proc_data = self.parse_proc_net()
+
+                for inode, pdata in proc_data.items():
+                    p_laddr = pdata.get('local_addr')
+                    p_raddr = pdata.get('remote_addr')
+
+                    # Находим все соединения с совпадающими адресами и заполняем inode/пид
+                    for conn in connections:
+                        try:
+                            if not conn.get('laddr') or not conn.get('raddr'):
+                                continue
+
+                            if (conn['laddr'][0], conn['laddr'][1]) == p_laddr and \
+                               (conn['raddr'][0], conn['raddr'][1]) == p_raddr:
+                                conn['inode'] = inode
+                                # Если psutil не дал pid, попробуем по inode
+                                if not conn.get('pid'):
+                                    proc_info = self.get_process_by_inode(inode)
+                                    if proc_info:
+                                        conn['pid'] = proc_info.get('pid')
+                                        conn['name'] = proc_info.get('name')
+                                        conn['exe'] = proc_info.get('exe')
+                                        conn['cmdline'] = proc_info.get('cmdline')
+                                        logging.debug(f"Enriched connection via inode {inode}: pid={conn.get('pid')} name={conn.get('name')}")
+                        except Exception:
+                            continue
+            except Exception:
+                # Не критично — просто не сможем обогатить соединения
+                pass
 
         return connections
 
@@ -178,7 +214,8 @@ class NetworkMonitor:
                 lines = f.readlines()[1:]
                 for line in lines:
                     parts = line.strip().split()
-                    if len(parts) >= 8:
+                    # UDP lines have similar layout to TCP; ensure we have enough fields
+                    if len(parts) >= 10:
                         local_addr = self.parse_proc_address(parts[1])
                         remote_addr = self.parse_proc_address(parts[2])
                         uid = int(parts[7])
