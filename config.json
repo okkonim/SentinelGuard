@@ -1,3 +1,4 @@
+
 {
     "fim": {
         "monitor_paths": ["./", "/tmp"],
@@ -25,5 +26,23 @@
         "icmp_flood_threshold": 50,
         "beacon_threshold": 10,
         "beacon_tolerance": 300
+    },
+    "crypto": {
+        "key_file": "crypto_key.enc",
+        "salt_file": "crypto_salt.bin",
+        "chunk_size": 65536
+    },
+    "ransomware": {
+        "mass_encryption_threshold": 5,
+        "encryption_time_window": 60,
+        "vssadmin_suspicious": true,
+        "file_extension_blacklist": [".encrypted", ".lock", ".crypt", ".ransom"],
+        "process_whitelist": ["System", "Registry", "smss.exe", "csrss.exe", "wininit.exe", "winlogon.exe", "services.exe", "lsass.exe", "lsm.exe", "svchost.exe", "fontdrvhost.exe", "WUDFHost.exe", "rundll32.exe", "rundll.exe"]
+    },
+    "network_analysis": {
+        "known_cc_servers": [],
+        "suspicious_ports": [6667, 6668, 6669, 31337, 12345, 54321, 1337],
+        "dns_timeout": 30,
+        "key_transmission_threshold": 1024
     }
 }

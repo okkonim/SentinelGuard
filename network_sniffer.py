@@ -18,15 +18,18 @@ from collections import defaultdict, Counter
 from datetime import datetime, timedelta
 import psutil
 
+
 from database import Database
 from yara_scanner import YARAScanner
 from process_monitor import ProcessMonitor
 from fim import FIM
 from pe_analyzer import PEAnalyzer
+from crypto import CryptoManager
 
 logger = logging.getLogger(__name__)
 
 class NetworkSniffer:
+
     def __init__(self, interface='ens33', bpf_filter='', db_name='firewall.db', config_path='config.json'):
         self.interface = interface
         self.bpf_filter = bpf_filter or 'tcp or udp or icmp'
@@ -38,6 +41,18 @@ class NetworkSniffer:
         self.process_monitor = ProcessMonitor(config_path, db_name)
         self.fim = FIM(config_path, db_name)
         self.pe_analyzer = PEAnalyzer(db_name, config_path)
+        self.crypto_manager = CryptoManager()
+
+        # Ransomware network detection settings
+        self.known_cc_servers = []
+        self.suspicious_ports = []
+        self.dns_timeout = 30
+        self.key_transmission_threshold = 1024
+
+        # Network tracking for ransomware detection
+        self.dns_queries = defaultdict(list)  # domain -> [timestamps]
+        self.large_transfers = defaultdict(list)  # (src_ip, dst_ip) -> [(timestamp, size)]
+        self.connection_patterns = defaultdict(list)  # (src_ip, dst_ip) -> [timestamps]
 
         # Load configuration
         self.load_config()
@@ -70,6 +85,7 @@ class NetworkSniffer:
             'start_time': None
         }
 
+
     def load_config(self):
         """Load configuration from config.json"""
         try:
@@ -87,6 +103,13 @@ class NetworkSniffer:
             yara_rules = config.get('yara', {}).get('rules_files', {})
             if yara_rules:
                 self.yara_scanner.compile_rules(yara_rules)
+
+            # Load ransomware network detection settings
+            network_config = config.get('network_analysis', {})
+            self.known_cc_servers = network_config.get('known_cc_servers', [])
+            self.suspicious_ports = network_config.get('suspicious_ports', [])
+            self.dns_timeout = network_config.get('dns_timeout', 30)
+            self.key_transmission_threshold = network_config.get('key_transmission_threshold', 1024)
 
         except Exception as e:
             logger.error(f"Error loading config: {e}")
@@ -270,6 +293,7 @@ class NetworkSniffer:
         except Exception as e:
             logger.error(f"Failed to log packet to DB: {e}")
 
+
     def _detect_anomalies(self, packet_info, packet):
         """Detect network anomalies"""
         current_time = datetime.now()
@@ -335,6 +359,9 @@ class NetworkSniffer:
                                               f"Average interval: {avg_interval:.1f}s, connections: {len(timestamps)}",
                                               packet_info, 'HIGH')
                             self._beacon_alerted.add(connection_key)
+
+        # Ransomware-specific network detection
+        self._detect_ransomware_network_activity(packet_info, current_time)
 
     def _analyze_payload(self, packet_info, packet):
         """Analyze packet payload for threats"""
@@ -519,6 +546,104 @@ class NetworkSniffer:
         print(f"[{severity}] {anomaly_type}: {description}")
         if details:
             print(f"  Details: {details}")
+
+
+    def _detect_ransomware_network_activity(self, packet_info, current_time):
+        """Detect ransomware-specific network activity"""
+        src_ip = packet_info.get('src_ip')
+        dst_ip = packet_info.get('dst_ip')
+        dst_port = packet_info.get('dst_port')
+
+        # Check for connections to known C&C servers
+        if dst_ip in self.known_cc_servers:
+            self._alert_anomaly('C_AND_C_CONNECTION',
+                              f"Connection to known C&C server: {dst_ip}",
+                              f"Source: {src_ip}:{packet_info.get('src_port')} -> {dst_ip}:{dst_port}",
+                              packet_info, 'CRITICAL')
+
+        # Check for connections to suspicious ports
+        if dst_port in self.suspicious_ports:
+            self._alert_anomaly('SUSPICIOUS_PORT_CONNECTION',
+                              f"Connection to suspicious port: {dst_port}",
+                              f"Source: {src_ip}:{packet_info.get('src_port')} -> {dst_ip}:{dst_port}",
+                              packet_info, 'HIGH')
+
+        # Check for large data transfers (potential key transmission)
+        if packet_info.get('packet_size', 0) > self.key_transmission_threshold:
+            connection_key = (src_ip, dst_ip)
+            self.large_transfers[connection_key].append((current_time, packet_info['packet_size']))
+
+            # Clean old entries
+            cutoff = current_time - timedelta(minutes=5)
+            self.large_transfers[connection_key] = [(t, size) for t, size in self.large_transfers[connection_key] if t > cutoff]
+
+            # Check for multiple large transfers (potential key transmission pattern)
+            if len(self.large_transfers[connection_key]) >= 3:
+                self._alert_anomaly('SUSPICIOUS_LARGE_TRANSFER',
+                                  f"Multiple large data transfers detected: {src_ip} -> {dst_ip}",
+                                  f"Large transfers: {len(self.large_transfers[connection_key])} in last 5 minutes",
+                                  packet_info, 'MEDIUM')
+
+        # Track connection patterns for beaconing analysis
+        if src_ip and dst_ip:
+            connection_key = (src_ip, dst_ip)
+            self.connection_patterns[connection_key].append(current_time)
+
+            # Clean old entries
+            cutoff = current_time - timedelta(minutes=30)
+            self.connection_patterns[connection_key] = [t for t in self.connection_patterns[connection_key] if t > cutoff]
+
+            # Check for regular communication patterns
+            if len(self.connection_patterns[connection_key]) >= 5:
+                timestamps = sorted(self.connection_patterns[connection_key])
+                intervals = []
+                for i in range(1, len(timestamps)):
+                    interval = (timestamps[i] - timestamps[i-1]).total_seconds()
+                    intervals.append(interval)
+
+                if intervals:
+                    avg_interval = sum(intervals) / len(intervals)
+                    # Check for regular intervals (potential C&C communication)
+                    regular_connections = sum(1 for interval in intervals
+                                            if abs(interval - avg_interval) <= 60)  # 1 minute tolerance
+
+                    if regular_connections >= len(intervals) * 0.7:  # 70% regularity
+                        self._alert_anomaly('REGULAR_C_AND_C_PATTERN',
+                                          f"Regular communication pattern detected: {src_ip} -> {dst_ip}",
+                                          f"Average interval: {avg_interval:.1f}s, connections: {len(timestamps)}",
+                                          packet_info, 'HIGH')
+
+        # DNS-based detection (simplified)
+        self._analyze_dns_patterns(packet_info, current_time)
+
+    def _analyze_dns_patterns(self, packet_info, current_time):
+        """Analyze DNS patterns for ransomware indicators"""
+        # This is a simplified implementation - real DNS analysis would be more complex
+        dst_port = packet_info.get('dst_port')
+        if dst_port == 53:  # DNS port
+            payload = packet_info.get('payload')
+            if payload:
+                # Look for suspicious domain patterns in DNS queries
+                try:
+                    payload_str = payload.decode('utf-8', errors='ignore').lower()
+                    # Check for domains that might be C&C servers
+                    suspicious_patterns = [
+                        '.onion',  # Tor domains
+                        'bitcoin',  # Bitcoin-related
+                        'crypto',   # Cryptocurrency-related
+                        'ransom'    # Ransomware-related
+                    ]
+
+                    for pattern in suspicious_patterns:
+                        if pattern in payload_str:
+                            self._alert_anomaly('SUSPICIOUS_DNS_QUERY',
+                                              f"Suspicious DNS query detected: {pattern}",
+                                              f"Query content: {payload_str[:100]}",
+                                              packet_info, 'MEDIUM')
+                            break
+
+                except Exception as e:
+                    logger.debug(f"Error analyzing DNS payload: {e}")
 
     def _print_final_stats(self):
         """Print final statistics"""

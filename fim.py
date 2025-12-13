@@ -2,12 +2,16 @@ import hashlib
 import os
 import time
 import json
+from collections import defaultdict
+from datetime import datetime, timedelta
 from database import Database
 from yara_scanner import YARAScanner
 from pe_analyzer import PEAnalyzer
+from crypto import CryptoManager
 import logging
 
 logger = logging.getLogger(__name__)
+
 
 class FIM:
     def __init__(self, config_path='config.json', db_name='firewall.db'):
@@ -15,10 +19,17 @@ class FIM:
         self.db = Database(db_name)
         self.yara_scanner = YARAScanner(db_name)
         self.pe_analyzer = PEAnalyzer(db_name)
+        self.crypto_manager = CryptoManager()
         self.monitor_paths = []
         self.check_interval = 4
         self.file_hashes = {}
         self.running = False
+
+        # Ransomware detection settings
+        self.mass_encryption_threshold = 5
+        self.encryption_time_window = 60
+        self.encryption_events = []  # List of (timestamp, file_path)
+
         self.load_config()
 
     def load_config(self):
@@ -30,6 +41,12 @@ class FIM:
             yara_rules = config.get('yara', {}).get('rules_files', {})
             if yara_rules:
                 self.yara_scanner.compile_rules(yara_rules)
+
+            # Load ransomware detection settings
+            ransomware_config = config.get('ransomware', {})
+            self.mass_encryption_threshold = ransomware_config.get('mass_encryption_threshold', 5)
+            self.encryption_time_window = ransomware_config.get('encryption_time_window', 60)
+
         except Exception as e:
             logger.error(f"Error loading config: {e}")
             self.monitor_paths = ['./']
@@ -108,6 +125,12 @@ class FIM:
         self.db.insert_fim_event(file_path, event_type, criticality)
         print(f"FIM Оповещение: {event_type} для {file_path}")
 
+        # Check if file appears to be encrypted
+        is_encrypted = self.crypto_manager.is_file_encrypted(file_path)
+        if is_encrypted and event_type == "Файл изменен":
+            print(f"Обнаружено потенциальное шифрование файла: {file_path}")
+            self._handle_encryption_detection(file_path)
+
         # Check if PE file and trigger PE analysis
         if self.pe_analyzer.is_pe_file(file_path):
             print(f"Запуск PE анализа для {file_path}")
@@ -136,10 +159,60 @@ class FIM:
                 for result in results:
                     self.db.insert_yara_event(file_path, result['rule_name'], 'MATCH', 'CRITICAL', str(result))
             else:
+
                 # No YARA matches but file changed - potential unknown threat
                 if event_type == "Файл изменен":
                     print(f"YARA: нет совпадений в {file_path} - потенциальная неизвестная угроза")
                     self.db.insert_netsec_alert('UNKNOWN_THREAT', f'No YARA matches but file changed: {file_path}', 'MEDIUM', 'File modified without YARA detection')
+
+    def _handle_encryption_detection(self, file_path):
+        """Handle detected file encryption"""
+        current_time = datetime.now()
+        self.encryption_events.append((current_time, file_path))
+
+        # Log encryption event to database
+        self.db.insert_fim_event(file_path, "Файл зашифрован", 'CRITICAL')
+
+        # Check for mass encryption
+        self._check_mass_encryption()
+
+
+    def _check_mass_encryption(self):
+        """Check for mass encryption attack"""
+        current_time = datetime.now()
+        cutoff_time = current_time - timedelta(seconds=self.encryption_time_window)
+
+        # Clean old events
+        self.encryption_events = [(t, f) for t, f in self.encryption_events if t > cutoff_time]
+
+        # Count encryption events in time window
+        encryption_count = len(self.encryption_events)
+
+        if encryption_count >= self.mass_encryption_threshold:
+            # Mass encryption detected
+            affected_files = [f for _, f in self.encryption_events]
+            file_list = ', '.join(affected_files[:5])  # Show first 5 files
+            if encryption_count > 5:
+                file_list += f" и еще {encryption_count - 5} файлов"
+
+            alert_message = f"Массовое шифрование файлов обнаружено: {encryption_count} файлов за {self.encryption_time_window} секунд"
+            details = f"Затронутые файлы: {file_list}"
+
+            print(f"[КРИТИЧЕСКОЕ] {alert_message}")
+            print(f"  Детали: {details}")
+
+            # Log to database
+            self.db.insert_netsec_alert(
+                'MASS_ENCRYPTION',
+                alert_message,
+                'CRITICAL',
+                json.dumps({
+                    'affected_files': affected_files,
+                    'count': encryption_count,
+                    'time_window': self.encryption_time_window,
+                    'timestamp': current_time.isoformat()
+                })
+            )
 
     def stop(self):
         self.running = False

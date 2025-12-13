@@ -1,6 +1,9 @@
+
 import sqlite3
 import datetime
 import logging
+import json
+import os
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -115,6 +118,7 @@ class Database:
             )
         ''')
 
+
         # PE imports table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS pe_imports (
@@ -124,6 +128,49 @@ class Database:
                 function TEXT,
                 suspicious INTEGER,
                 FOREIGN KEY (file_id) REFERENCES pe_files (id)
+            )
+        ''')
+
+        # File hashes table for rollback functionality
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS file_hashes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT,
+                file_path TEXT UNIQUE,
+                sha256 TEXT,
+                file_size INTEGER,
+                backup_path TEXT,
+                is_encrypted INTEGER DEFAULT 0
+            )
+        ''')
+
+        # Ransomware attack correlation table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS ransomware_attacks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT,
+                confidence_score REAL,
+                attack_type TEXT,
+                description TEXT,
+                affected_files TEXT,
+                process_pid INTEGER,
+                process_name TEXT,
+                network_connections TEXT,
+                status TEXT DEFAULT 'ACTIVE',
+                rollback_attempted INTEGER DEFAULT 0,
+                rollback_success INTEGER DEFAULT 0
+            )
+        ''')
+
+        # Event correlation table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS event_correlations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT,
+                correlation_type TEXT,
+                related_events TEXT,
+                confidence_score REAL,
+                description TEXT
             )
         ''')
 
@@ -243,6 +290,7 @@ class Database:
         cursor.execute(f'SELECT * FROM {table} ORDER BY timestamp DESC LIMIT ?', (limit,))
         return cursor.fetchall()
 
+
     def close(self):
         if self.conn:
             self.conn.close()
@@ -253,3 +301,238 @@ class Database:
                 except Exception:
                     pass
                 self._conn = None
+
+    # New methods for ransomware protection
+
+    def insert_file_hash(self, file_path, sha256, file_size, backup_path=None, is_encrypted=0):
+        """Insert or update file hash for rollback functionality"""
+        timestamp = datetime.datetime.now().isoformat()
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        # Check if file exists
+        cursor.execute('SELECT id FROM file_hashes WHERE file_path = ?', (file_path,))
+        existing = cursor.fetchone()
+        
+        if existing:
+            # Update existing hash
+            cursor.execute('''
+                UPDATE file_hashes 
+                SET timestamp = ?, sha256 = ?, file_size = ?, backup_path = ?, is_encrypted = ?
+                WHERE file_path = ?
+            ''', (timestamp, sha256, file_size, backup_path, is_encrypted, file_path))
+        else:
+            # Insert new hash
+            cursor.execute('''
+                INSERT INTO file_hashes (timestamp, file_path, sha256, file_size, backup_path, is_encrypted)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (timestamp, file_path, sha256, file_size, backup_path, is_encrypted))
+        
+        conn.commit()
+
+    def get_file_hash(self, file_path):
+        """Get file hash for rollback"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM file_hashes WHERE file_path = ?', (file_path,))
+        return cursor.fetchone()
+
+    def insert_ransomware_attack(self, confidence_score, attack_type, description, 
+                                affected_files=None, process_pid=None, process_name=None, 
+                                network_connections=None):
+        """Insert ransomware attack correlation data"""
+        timestamp = datetime.datetime.now().isoformat()
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT INTO ransomware_attacks 
+            (timestamp, confidence_score, attack_type, description, affected_files, 
+             process_pid, process_name, network_connections)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (timestamp, confidence_score, attack_type, description, 
+              json.dumps(affected_files) if affected_files else None,
+              process_pid, process_name, 
+              json.dumps(network_connections) if network_connections else None))
+        
+        attack_id = cursor.lastrowid
+        conn.commit()
+        return attack_id
+
+    def update_ransomware_attack_status(self, attack_id, status, rollback_attempted=None, rollback_success=None):
+        """Update ransomware attack status and rollback information"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        update_query = 'UPDATE ransomware_attacks SET status = ?'
+        params = [status]
+        
+        if rollback_attempted is not None:
+            update_query += ', rollback_attempted = ?'
+            params.append(rollback_attempted)
+        
+        if rollback_success is not None:
+            update_query += ', rollback_success = ?'
+            params.append(rollback_success)
+        
+        update_query += ' WHERE id = ?'
+        params.append(attack_id)
+        
+        cursor.execute(update_query, params)
+        conn.commit()
+
+    def correlate_ransomware_events(self, fim_events, process_events, network_events, time_window_minutes=5):
+        """Correlate FIM, process, and network events to detect ransomware attacks"""
+        current_time = datetime.datetime.now()
+        cutoff_time = current_time - datetime.timedelta(minutes=time_window_minutes)
+        
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        # Get recent events within time window
+        cursor.execute('''
+            SELECT * FROM fim_events WHERE timestamp > ? AND criticality IN ('HIGH', 'CRITICAL')
+        ''', (cutoff_time.isoformat(),))
+        recent_fim_events = cursor.fetchall()
+        
+        cursor.execute('''
+            SELECT * FROM process_events WHERE timestamp > ? AND criticality IN ('HIGH', 'CRITICAL')
+        ''', (cutoff_time.isoformat(),))
+        recent_process_events = cursor.fetchall()
+        
+        cursor.execute('''
+            SELECT * FROM netsec_alerts WHERE timestamp > ? AND severity IN ('HIGH', 'CRITICAL')
+        ''', (cutoff_time.isoformat(),))
+        recent_network_events = cursor.fetchall()
+        
+        # Analyze patterns
+        mass_encryption_events = [e for e in recent_fim_events if 'массовое шифрование' in e[3].lower()]
+        suspicious_processes = [e for e in recent_process_events if 'ransomware' in e[4].lower()]
+        cc_connections = [e for e in recent_network_events if 'c_and_c' in e[2].lower()]
+        
+        # Calculate confidence score
+        confidence_score = 0.0
+        if mass_encryption_events:
+            confidence_score += 0.4  # Mass encryption is strong indicator
+        if suspicious_processes:
+            confidence_score += 0.3  # Suspicious process behavior
+        if cc_connections:
+            confidence_score += 0.3  # C&C communication
+        
+        # If confidence is high enough, log correlation
+        if confidence_score >= 0.7:
+            description = f"Ransomware attack detected with confidence {confidence_score:.2f}"
+            affected_files = [e[2] for e in mass_encryption_events] if mass_encryption_events else []
+            process_pid = suspicious_processes[0][1] if suspicious_processes else None
+            process_name = suspicious_processes[0][2] if suspicious_processes else None
+            
+            attack_id = self.insert_ransomware_attack(
+                confidence_score, 'MALWARE', description, affected_files, process_pid, process_name
+            )
+            
+            # Log correlation event
+            self.insert_event_correlation(
+                'RANSOMWARE_DETECTION',
+                json.dumps({
+                    'fim_events': mass_encryption_events,
+                    'process_events': suspicious_processes,
+                    'network_events': cc_connections
+                }),
+                confidence_score,
+                description
+            )
+            
+            return attack_id
+        
+        return None
+
+    def insert_event_correlation(self, correlation_type, related_events, confidence_score, description):
+        """Insert event correlation data"""
+        timestamp = datetime.datetime.now().isoformat()
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT INTO event_correlations 
+            (timestamp, correlation_type, related_events, confidence_score, description)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (timestamp, correlation_type, related_events, confidence_score, description))
+        
+        conn.commit()
+
+    def attempt_rollback(self, file_path, backup_path=None):
+        """Attempt to rollback a file to its previous state"""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            
+            # Get file hash info
+            cursor.execute('SELECT * FROM file_hashes WHERE file_path = ?', (file_path,))
+            file_info = cursor.fetchone()
+            
+            if not file_info:
+                logger.error(f"No backup information found for {file_path}")
+                return False
+            
+            original_sha256 = file_info[3]  # sha256 column
+            original_size = file_info[4]   # file_size column
+            backup_file_path = file_info[5] if file_info[5] else backup_path
+            
+            if not backup_file_path or not os.path.exists(backup_file_path):
+                logger.error(f"Backup file not found for {file_path}")
+                return False
+            
+            # Restore from backup
+            import shutil
+            shutil.copy2(backup_file_path, file_path)
+            
+            # Verify restore
+            import hashlib
+            with open(file_path, 'rb') as f:
+                current_hash = hashlib.sha256(f.read()).hexdigest()
+            
+            if current_hash == original_sha256:
+                logger.info(f"Successfully rolled back {file_path}")
+                # Update database to mark as restored
+                cursor.execute('UPDATE file_hashes SET timestamp = ? WHERE file_path = ?', 
+                             (datetime.datetime.now().isoformat(), file_path))
+                conn.commit()
+                return True
+            else:
+                logger.error(f"Rollback verification failed for {file_path}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Rollback failed for {file_path}: {e}")
+            return False
+
+    def get_recent_ransomware_attacks(self, hours=24):
+        """Get recent ransomware attacks from database"""
+        cutoff_time = datetime.datetime.now() - datetime.timedelta(hours=hours)
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT * FROM ransomware_attacks 
+            WHERE timestamp > ? 
+            ORDER BY timestamp DESC
+        ''', (cutoff_time.isoformat(),))
+        
+        return cursor.fetchall()
+
+    def cleanup_old_events(self, days=30):
+        """Clean up old events to prevent database bloat"""
+        cutoff_time = datetime.datetime.now() - datetime.timedelta(days=days)
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        tables_to_clean = ['network_events', 'fim_events', 'process_events', 'netsec_alerts', 'yara_events']
+        
+        for table in tables_to_clean:
+            try:
+                cursor.execute(f'DELETE FROM {table} WHERE timestamp < ?', (cutoff_time.isoformat(),))
+                logger.info(f"Cleaned up old events from {table}")
+            except Exception as e:
+                logger.error(f"Failed to clean up {table}: {e}")
+        
+        conn.commit()
