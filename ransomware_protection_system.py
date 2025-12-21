@@ -2,9 +2,6 @@
 """
 Гибридная система защиты от программ-вымогателей
 Комплексная система защиты от ransomware с интеграцией криптографии, FIM, поведенческого и сетевого анализа
-
-Автор: BlackBox AI Security System
-Дата: 2024
 """
 
 import os
@@ -105,7 +102,7 @@ class RansomwareProtectionSystem:
             # Start FIM monitoring
             if self.modules['fim']:
                 print("Запуск FIM мониторинга...")
-                fim_thread = threading.Thread(target=self._start_fim_monitoring, daemon=True)
+                fim_thread = threading.Thread(target=self.fim.monitor, daemon=True)
                 fim_thread.start()
                 self.threads.append(fim_thread)
                 time.sleep(1)
@@ -190,15 +187,35 @@ class RansomwareProtectionSystem:
         """Start event correlation engine"""
         while self.running:
             try:
+                # Get recent events for correlation (last 5 minutes)
+                current_time = datetime.now()
+                cutoff_time = current_time.replace(second=0, microsecond=0)
+
+                # Get recent FIM events
+                fim_events = self.db.query_events('fim_events', 100)
+                recent_fim = [e for e in fim_events if e[1] > cutoff_time.isoformat()]
+
+                # Get recent process events
+                process_events = self.db.query_events('process_events', 100)
+                recent_process = [e for e in process_events if e[1] > cutoff_time.isoformat()]
+
+                # Get recent network alerts
+                network_events = self.db.query_events('netsec_alerts', 100)
+                recent_network = [e for e in network_events if e[1] > cutoff_time.isoformat()]
+
                 # Correlate events every 30 seconds
-                self.db.correlate_ransomware_events([], [], [])
+                attack_id = self.db.correlate_ransomware_events(recent_fim, recent_process, recent_network)
+
+                if attack_id:
+                    logger.warning(f"Ransomware attack detected and correlated: ID {attack_id}")
+
                 time.sleep(30)
             except Exception as e:
                 logger.error(f"Correlation engine error: {e}")
                 time.sleep(60)  # Wait longer on error
 
     def encrypt_file(self, file_path: str, key_file: str = None) -> bool:
-        """Manually encrypt a file (for testing)"""
+        """Manually encrypt a file"""
         try:
             if not os.path.exists(file_path):
                 print(f"Файл не найден: {file_path}")
@@ -220,7 +237,7 @@ class RansomwareProtectionSystem:
             return False
 
     def decrypt_file(self, file_path: str, key_file: str = None) -> bool:
-        """Manually decrypt a file (for testing)"""
+        """Manually decrypt a file"""
         try:
             print(f"Дешифрование файла: {file_path}")
             success = self.crypto_manager.decrypt_file(file_path, key_file)

@@ -116,3 +116,10 @@ logs/
 network_scan_*.json
 TODO.md
 network_baseline.json
+tests/test_file.txt
+tests/test_file.txt.gpg
+
+test_file*.txt
+test_ransomware/*
+network_baseline.json
+

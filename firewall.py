@@ -3,6 +3,7 @@ import threading
 import json
 import logging
 import os
+import sys
 from network_capture import NetworkCapture
 from fim import FIM
 from process_monitor import ProcessMonitor
@@ -11,6 +12,7 @@ from network_monitor import NetworkMonitor
 from network_sniffer import NetworkSniffer
 from yara_scanner import YARAScanner
 from pe_analyzer import PEAnalyzer
+from ransomware_protection_system import RansomwareProtectionSystem
 
 class Firewall:
     def __init__(self, config_path='config.json'):
@@ -23,6 +25,7 @@ class Firewall:
         self.network_monitor = NetworkMonitor(external_db=self.db)
         self.yara_scanner = YARAScanner()
         self.pe_analyzer = PEAnalyzer()
+        self.ransomware_system = RansomwareProtectionSystem(config_path=config_path, db_name='firewall.db')
         self.threads = []
         self.load_config()
 
@@ -204,10 +207,10 @@ class Firewall:
         print("Configuration reloaded")
 
     def run_netsec_scan(self):
-        """Запуск сканирования NetSec Sentinel"""
-        print("Запуск сканирования NetSec Sentinel...")
+        """Запуск сканирования сетевого мониторинга"""
+        print("Запуск сканирования сетевого мониторинга...")
         results = self.network_monitor.run_comprehensive_scan()
-        print("Сканирование NetSec завершено.")
+        print("Сканирование сетевого мониторинга завершено.")
         return results
 
     def create_baseline(self):
@@ -293,18 +296,19 @@ def interactive_menu(firewall):
         print("2. Запустить гибридный сетевой сниффер")
         print("3. Запустить модуль FIM")
         print("4. Запустить модуль мониторинга процессов")
-        print("5. Запустить модуль NetSec Sentinel")
-        print("6. Просмотр логов")
-        print("7. Перезагрузка правил")
-        print("8. NetSec сканирование")
-        print("9. Создание базовой линии")
-        print("10. Сравнение с базовой линией")
-        print("11. Ручное YARA сканирование")
-        print("12. Просмотр YARA правил")
-        print("13. PE анализ файла")
-        print("14. Просмотр PE отчетов")
+        print("5. Запустить модуль сетевого мониторинга")
+        print("6. Запустить систему защиты от ransomware")
+        print("7. Просмотр логов")
+        print("8. Перезагрузка правил")
+        print("9. NetSec сканирование")
+        print("10. Создание базовой линии")
+        print("11. Сравнение с базовой линией")
+        print("12. Ручное YARA сканирование")
+        print("13. Просмотр YARA правил")
+        print("14. PE анализ файла")
+        print("15. Просмотр PE отчетов")
         print("0. Выход")
-        choice = input("Выберите опцию (0-14): ").strip()
+        choice = input("Выберите опцию (0-15): ").strip()
 
         if choice == '1':
             firewall.start()
@@ -359,8 +363,8 @@ def interactive_menu(firewall):
 
 def main():
     parser = argparse.ArgumentParser(description="Гибридная система обнаружения угроз")
-    parser.add_argument('command', nargs='?', choices=['start', 'stop', 'logs', 'reload', 'netsec-scan', 'baseline', 'compare', 'start-sniffer', 'start-fim', 'start-process', 'start-netsec', 'interactive', 'scan', 'rules', 'pe-analyze', 'pe-reports'], help="Команда для выполнения")
-    parser.add_argument('--table', choices=['network_events', 'fim_events', 'process_events', 'netsec_alerts', 'yara_events'], help="Таблица для просмотра логов")
+    parser.add_argument('command', nargs='?', choices=['start', 'stop', 'logs', 'reload', 'netsec-scan', 'baseline', 'compare', 'start-sniffer', 'start-fim', 'start-process', 'start-netsec', 'start-ransomware', 'interactive', 'scan', 'rules', 'pe-analyze', 'pe-reports'], help="Команда для выполнения")
+    parser.add_argument('--table', choices=['network_events', 'fim_events', 'process_events', 'netsec_alerts', 'yara_events', 'ransomware_attacks'], help="Таблица для просмотра логов")
     parser.add_argument('--limit', type=int, default=10, help="Количество записей логов для отображения")
     parser.add_argument('--path', help="Путь для сканирования (для команды scan)")
 
