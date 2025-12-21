@@ -20,12 +20,13 @@ from datetime import datetime
 
 import psutil
 
-# Настройка логирования
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+# Импорт утилит
+from utils.logging_utils import RansomwareLogger, LoggerMixin
+from utils.exceptions import RansomwareProtectionError, NetworkError
+from utils.constants import *
 
 
-class NetworkMonitor:
+class NetworkMonitor(LoggerMixin):
     def __init__(self, config=None, external_db=None):
         self.config = config or {}
         self.filters = {
@@ -51,7 +52,43 @@ class NetworkMonitor:
         self.alerts = []
         self.db_path = None  # Will use external database
         self.external_db = external_db  # Reference to external database
+        self.running = False
+        
+        # Логгер будет автоматически создан через LoggerMixin
+        pass
+        
         # self.init_database()  # Commented out to use external DB
+
+    def start_monitoring(self):
+        """Запуск непрерывного мониторинга"""
+        self.running = True
+        self.logger.info("Запуск мониторинга сетевых соединений")
+        
+        # Запускаем непрерывный мониторинг в отдельном потоке
+        import threading
+        monitor_thread = threading.Thread(target=self._continuous_monitoring_loop, daemon=True)
+        monitor_thread.start()
+        return monitor_thread
+
+    def stop_monitoring(self):
+        """Остановка мониторинга"""
+        self.running = False
+        self.logger.info("Остановка мониторинга сетевых соединений")
+
+    def _continuous_monitoring_loop(self):
+        """Цикл непрерывного мониторинга"""
+        while self.running:
+            try:
+                connections = self.get_network_connections()
+                if connections:
+                    patterns = self.analyze_traffic_patterns(connections)
+                    if any(patterns.values()):
+                        self.logger.warning(f"Обнаружены подозрительные паттерны: {list(patterns.keys())}")
+                
+                time.sleep(60)  # Проверка каждую минуту
+            except Exception as e:
+                self.logger.error(f"Ошибка в цикле мониторинга: {e}")
+                time.sleep(30)
 
     def init_database(self):
         """Инициализация базы данных для хранения результатов"""

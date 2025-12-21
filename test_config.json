@@ -1,0 +1,1 @@
+{"database": {"name": "test_firewall.db"}, "logging": {"level": "INFO", "file": "test.log"}, "yara": {"rules_files": {}}, "pe_analysis": {"enabled": true}, "process_monitor": {"enabled": true, "check_interval": 1}, "network_monitor": {"enabled": true}, "fim": {"enabled": true, "paths": ["/tmp"], "interval": 2}}
