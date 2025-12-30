@@ -252,8 +252,12 @@ class SectionAnalyzer(LoggerMixin):
         """Extract clean section name."""
         try:
             return section.Name.decode('utf-8').rstrip('\x00')
-        except:
-            return str(section.Name).strip('\x00')
+        except (UnicodeDecodeError, AttributeError) as e:
+            RansomwareLogger.log_error(e, f"Error decoding section name: {section.Name}")
+            try:
+                return str(section.Name).strip('\x00')
+            except Exception:
+                return 'Unknown' 
 
     def _extract_section_data(self, section, pe: pefile.PE) -> Optional[bytes]:
         """Extract section data with fallback mechanisms."""
@@ -261,8 +265,8 @@ class SectionAnalyzer(LoggerMixin):
         try:
             if section.PointerToRawData and section.SizeOfRawData:
                 return section.get_data()
-        except:
-            pass
+        except Exception as e:
+            RansomwareLogger.log_error(e, f"Error getting section data via pefile API for section {section.Name}")
             
         # Try manual file reading
         try:
@@ -270,8 +274,8 @@ class SectionAnalyzer(LoggerMixin):
                 with open(pe.filename, 'rb') as f:
                     f.seek(section.PointerToRawData)
                     return f.read(section.SizeOfRawData)
-        except:
-            pass
+        except Exception as e:
+            RansomwareLogger.log_error(e, f"Error reading section data from file for section {section.Name}")
             
         return None
 
@@ -468,8 +472,11 @@ class PEAnalyzer(LoggerMixin):
             RansomwareLogger.log_operation('PEAnalyzer config loaded', True)
             return config
             
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            RansomwareLogger.log_error(e, "PEAnalyzer configuration file missing or invalid - using defaults")
+            return {}
         except Exception as e:
-            RansomwareLogger.log_error(e, "Error loading PEAnalyzer configuration")
+            RansomwareLogger.log_error(e, "Unexpected error loading PEAnalyzer configuration")
             return {}
 
     def analyze_file(self, file_path: str) -> Optional[Dict[str, Any]]:

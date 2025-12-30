@@ -107,9 +107,9 @@ class RansomwareLogger:
             logger = logging.getLogger('ransomware_protection')
 
         level = logging.INFO if success else logging.ERROR
-        status = "успешно" if success else "ошибка"
+        status = "success" if success else "error"
 
-        message = f"Операция '{operation}' {status}"
+        message = f"Operation '{operation}' {status}"
         if details:
             message += f": {details}"
 
@@ -133,9 +133,9 @@ class RansomwareLogger:
 
         level = severity_levels.get(severity.upper(), logging.INFO)
 
-        message = f"Безопасность [{event_type}]: {description}"
+        message = f"Security [{event_type}]: {description}"
         if details:
-            message += f" | Детали: {details}"
+            message += f" | Details: {details}"
 
         logger.log(level, message)
 
@@ -146,7 +146,7 @@ class RansomwareLogger:
         if logger is None:
             logger = logging.getLogger('ransomware_protection')
 
-        message = f"Ошибка: {str(error)}"
+        message = f"Error: {str(error)}"
         if context:
             message = f"{context} - {message}"
 

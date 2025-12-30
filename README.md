@@ -1,254 +1,141 @@
-# Ransomware Protection System - Refactored Edition
+# SentinelGuard — Ransomware Protection System (Detailed)
 
-## Обзор системы
+> A practical, code-accurate README describing modules, CLI, config keys, and operational behavior.
 
-Данная система представляет собой комплексное решение для защиты от ransomware-атак, состоящее из множества взаимосвязанных модулей. После рефакторинга система получила улучшенную архитектуру с централизованным логированием, стандартизированной обработкой ошибок и модульной структурой.
+---
 
-## Архитектура системы
+## Overview
+SentinelGuard is a modular Python prototype for ransomware detection and response. It combines multiple detectors (FIM, process monitoring, YARA scanning, PE analysis, and optional network sniffing) with a centralized SQLite event store and a correlation engine to surface likely ransomware attacks and support rollback remediation.
 
-### Основные компоненты:
+This README documents the exact behavior implemented in the codebase, CLI usage, configuration, and operational recommendations.
 
-1. **firewall.py** - Главный координатор системы
-2. **database.py** - Управление базой данных SQLite
-3. **process_monitor.py** - Мониторинг процессов системы
-4. **network_monitor.py** - Сетевой мониторинг и анализ трафика
-5. **yara_scanner.py** - Сканирование файлов с использованием YARA-правил
-6. **pe_analyzer.py** - Анализ исполняемых файлов PE-формата
-7. **crypto.py** - Криптографические операции и защита данных
-8. **utils/** - Вспомогательные утилиты
+---
 
-## Детальное описание модулей
+## Quick facts (code-accurate)
+- Default config file: `config.json` (CLI flag `--config` changes this)
+- Default DB file: `firewall.db` (CLI flag `--db` changes this)
+- Main CLI: `ransomware_protection_system.py` (with `CLIHandler`)
+- Coordinator/utility wrapper: `firewall.py` (interactive operations, PE/YARA manual scans)
+- Central logger: `utils/logging_utils.RansomwareLogger`
+- Default network interface constant: `NETWORK_INTERFACE` set to `ens33` in `utils/constants.py` (used when a configured interface is not provided)
 
-### 1. Firewall (firewall.py)
+---
 
-**Назначение**: Главный координатор всей системы защиты.
+## Modules & behavior (precise)
+- ConfigurationManager (`ransomware_protection_system.ConfigurationManager`)
+  - Loads `config.json` and populates module enable flags. Required sections flagged if missing (logs a CONFIG_MISSING_SECTION).
+  - Module enable defaults are: `crypto` (True), `fim` (False initially in code but interpreted from config), `process_monitor` (False initially), `network_sniffer` (False by default), `pe_analyzer` (True), `yara_scanner` (True).
 
-**Основные возможности**:
-- Инициализация всех компонентов системы
-- Координация работы мониторинга процессов, сети и файлов
-- Централизованное управление конфигурацией
-- Объединение результатов анализа из разных модулей
+- SystemManager (`ransomware_protection_system.SystemManager`)
+  - Owns the lifecycle, lazy-loads components (FIM, process monitor, network sniffer, YARA, PE analyzer) only when needed and when the config enables them.
+  - Core methods:
+    - `start_protection()` — Starts enabled modules and correlation engine in daemon threads (returns boolean success).
+    - `stop_protection()` — Signals modules to stop, stops correlation engine, waits for threads.
+    - `encrypt_file(file, key)` / `decrypt_file(file, key)` — Convenience methods using `CryptoManager` for manual ops and logging events to the DB.
+    - `attempt_rollback(file, backup=None)` — Calls `Database.attempt_rollback` to restore files from backups tracked in the DB.
+    - `cleanup_system(days=30)` — Calls DB cleanup to purge old events.
+    - `create_test_files(directory)` — Writes demo files used for encryption/rollback testing (NOTE: current implementations write text in the test files in Russian; see 'Known caveats' below).
 
-**Ключевые методы**:
-- `start_monitoring()` - Запуск всех мониторинговых компонентов
-- `stop_monitoring()` - Остановка системы
-- `perform_full_scan()` - Полное сканирование системы
-- `get_system_status()` - Получение статуса системы
+- FIM (`fim.FIM`)
+  - Monitors configured paths, computes hashes/entropy, inserts FIM events into the DB. Uses chunked hashing with `FIM_HASH_CHUNK_SIZE` for large files.
 
-### 2. Database (database.py)
+- Process monitor (`process_monitor.ProcessMonitor`)
+  - Samples processes at configured intervals, records process start/stop events, command lines, and heuristics for suspicious imports/names.
 
-**Назначение**: Управление базой данных SQLite для хранения всех событий системы.
+- Network components (`network_sniffer`, `network_capture`, `network_monitor`)
+  - Capture traffic, analyze for C2 patterns, DDoS heuristics and beaconing. Network sniffer initialization uses the configured interface if present, otherwise falls back to `NETWORK_INTERFACE` constant.
 
-**Основные возможности**:
-- Создание и управление схемой базы данных
-- Вставка и запрос событий безопасности
-- Хранение результатов анализа PE-файлов
-- Логирование YARA-совпадений
+- YARA scanner (`yara_scanner.YARAScanner`)
+  - Compiles rules from `config.json` `yara.rules_files` and can scan single files or directories. Matches are recorded to DB and used for correlation.
 
-**Таблицы базы данных**:
-- `netsec_alerts` - Оповещения системы безопасности
-- `process_events` - События процессов
-- `network_events` - Сетевые события
-- `yara_events` - События YARA-сканирования
-- `pe_files`, `pe_sections`, `pe_imports` - Данные анализа PE-файлов
+- PE analyzer (`pe_analyzer.PEAnalyzer`)
+  - Examines PE headers, computes section entropy, collects imports, and flags anomalies and suspicious imports.
 
-### 3. Process Monitor (process_monitor.py)
+- Database (`database.Database`)
+  - Tables include `fim_events`, `process_events`, `network_events`, `netsec_alerts`, `yara_events`, `pe_files`, `pe_sections`, `pe_imports`, and `ransomware_attacks`.
+  - Provides `query_events`, attack correlation helpers, `attempt_rollback`, and cleanup routines.
 
-**Назначение**: Мониторинг запуска и выполнения процессов в системе.
+---
 
-**Основные возможности**:
-- Отслеживание создания новых процессов
-- Анализ командной строки процессов
-- Детектирование подозрительных процессов
-- Мониторинг сетевой активности процессов
+## CLI reference (exact commands and behavior)
+Primary entry: `python3 ransomware_protection_system.py --config config.json --db firewall.db <command>`
 
-**Алгоритмы детекции**:
-- Анализ имен процессов на предмет подозрительности
-- Проверка аргументов командной строки
-- Мониторинг создания дочерних процессов
-- Анализ сетевых подключений процессов
+Available subcommands (implemented exactly as shown in `CLIHandler`):
+- `start` — starts the protection system via `SystemManager.start_protection()` (spawns threads for modules and the correlation engine).
+- `stop` — stops the system `SystemManager.stop_protection()`.
+- `status` — prints a human-readable status via `StatusReporter.display_system_status()`.
+- `encrypt <file> [--key <keyfile>]` — triggers `SystemManager.encrypt_file()` and logs an FIM event when successful.
+- `decrypt <file> [--key <keyfile>]` — triggers `SystemManager.decrypt_file()` and logs an FIM event when successful.
+- `alerts [--limit N]` — displays most recent N alerts (`status_reporter.display_alerts`).
+- `attacks [--hours N]` — shows correlated attacks observed in the last N hours (`status_reporter.display_ransomware_attacks`).
+- `rollback <file> [--backup path]` — attempts a rollback using DB-stored backup information.
+- `cleanup <days>` — removes DB events older than `<days>` (defaults to 30).
+- `test [--dir ./test_files]` — creates test files used for encryption/rollback tests.
 
-### 4. Network Monitor (network_monitor.py)
+Wrapper coordinator (`firewall.py`):
+- Offers helper commands and interactive convenience (manual YARA scans, PE analysis). Example methods exposed:
+  - `manual_scan(path)` — runs YARA on a file/directory.
+  - `manual_pe_analysis(path)` — runs PE analysis with YARA integration.
 
-**Назначение**: Анализ сетевого трафика и детекция подозрительной активности.
+---
 
-**Основные возможности**:
-- Перехват и анализ сетевых пакетов
-- Детекция DDoS-атак (SYN flood, ICMP flood)
-- Выявление C&C-каналов связи
-- Анализ поведенческих паттернов сетевой активности
+## Where logs & data live
+- Default log file: `logs/ransomware_protection.log` (configured via `config.json`).
+- Database file: `firewall.db` (or path you supply via `--db`).
+- Demo and test files: created under `./test_files` by default when `test` subcommand is used.
 
-**Типы анализа**:
-- Статистический анализ трафика
-- Детекция beaconing-активности
-- Анализ объема передаваемых данных
-- Мониторинг подозрительных портов
+---
 
-### 5. YARA Scanner (yara_scanner.py)
+## Known caveats & recommended fixes (practical)
+- Some user-facing strings and test file contents are still in Russian (e.g., `create_test_files()` writes Russian text). The system logic is correct; texts need localization for consistent English UX.
+- `NetworkSniffer` default interface is `ens33` — update the `config.json` or `NetworkSniffer` initialization if your environment uses `eth0`, `wlp3s0`, etc.
+- `network_sniffer` does not always provide a `stop()` method; stopping relies on the thread ending naturally — consider adding a controlled shutdown method for immediate stops.
 
-**Назначение**: Сканирование файлов с использованием YARA-правил для выявления известных угроз.
+---
 
-**Основные возможности**:
-- Компиляция и управление YARA-правилами
-- Сканирование файлов и директорий
-- Анализ результатов сканирования
-- Генерация отчетов о найденных угрозах
+## Operational checklist
+- Enable `fim`, `process_monitor`, and `yara_scanner` in `config.json` for a good starting point.
+- If enabling `network_sniffer`, set a correct `interface` in `config.json`.
+- Run `python3 tests/run_tests_manual.py` after making changes.
+- Back up `firewall.db` and `logs/` before experiments that change persistent state.
 
-**Процесс работы**:
-1. Компиляция YARA-правил из файлов
-2. Сканирование файловой системы
-3. Анализ совпадений и присвоение уровней серьезности
-4. Логирование результатов в базу данных
+---
 
-### 6. PE Analyzer (pe_analyzer.py)
+## Renaming to SentinelGuard (optional)
+If you want the code and artifacts to consistently use `SentinelGuard`:
+- Replace user-facing banners and log messages containing "Ransomware Protection" with "SentinelGuard".
+- Optionally rename `ransomware_protection_system.py` to `sentinelguard.py` and update demos and docs to use that name.
+- Update shell scripts or service wrappers if present.
 
-**Назначение**: Глубокий анализ исполняемых файлов формата PE (Portable Executable).
+I can perform these renames and update all user-facing strings if you give me the go-ahead; I'll run the test suite after to catch regressions.
 
-**Основные возможности**:
-- Анализ заголовков PE-файлов
-- Исследование секций файла и расчет энтропии
-- Анализ импортируемых функций
-- Детекция упаковщиков и обфускации
+---
 
-**Алгоритмы анализа**:
-- Расчет энтропии Шеннона для секций
-- Анализ подозрительных имен секций
-- Проверка импортов на наличие опасных функций
-- Выявление признаков упаковки/обфускации
+## Quick operations cheat sheet
+- Start: `python3 ransomware_protection_system.py start`
+- Stop: `python3 ransomware_protection_system.py stop`
+- Status: `python3 ransomware_protection_system.py status`
+- Alerts: `python3 ransomware_protection_system.py alerts --limit 50`
+- Attacks: `python3 ransomware_protection_system.py attacks --hours 48`
+- Encrypt: `python3 ransomware_protection_system.py encrypt ./document.txt`
+- Decrypt: `python3 ransomware_protection_system.py decrypt ./document.txt.encrypted`
+- Rollback: `python3 ransomware_protection_system.py rollback ./document.txt`
+- Cleanup: `python3 ransomware_protection_system.py cleanup 30`
+- Test files generation: `python3 ransomware_protection_system.py test --dir ./test_files`
 
-### 7. Crypto Module (crypto.py)
+---
 
-**Назначение**: Криптографические операции для защиты данных системы.
+## Development & tests
+- Run the manual test runner: `python3 tests/run_tests_manual.py`.
+- Use `demos/demo_runner.py` for demo scenarios.
+- Before merging changes, run linters and the manual test suite.
 
-**Основные возможности**:
-- Генерация и управление криптографическими ключами
-- Шифрование/дешифрование файлов
-- Защищенное хранение ключей
-- Расчет хеш-сумм файлов
+---
 
-**Безопасность**:
-- Использование алгоритма AES-256
-- PBKDF2 для деривации ключей из паролей
-- Защищенное хранение ключей с ограниченными правами доступа
+License: MIT
 
-### 8. Utils
+If you'd like, I can now:
+- Convert remaining Russian user-facing strings to English (in `create_test_files`, banners, prints, and logs), and/or
+- Rename the main script and help messages to `sentinelguard.py`.
 
-**logging_utils.py**:
-- Централизованная система логирования
-- Различные уровни логирования (INFO, WARNING, ERROR, CRITICAL)
-- Форматированный вывод с временными метками
-- Разделение логов по категориям (операции, безопасность, ошибки)
-
-**exceptions.py**:
-- Кастомные исключения для различных типов ошибок
-- Стандартизированная обработка ошибок
-- Детальная информация об ошибках
-
-**constants.py**:
-- Центрастанты системы
-- Конфигурализованные конционные параметры
-- Списки подозрительных элементов (процессы, порты, импорты)
-
-## Конфигурация системы
-
-Система настраивается через файл `config.json`:
-
-```json
-{
-    "database": {
-        "name": "firewall.db",
-        "cleanup_days": 30
-    },
-    "logging": {
-        "level": "INFO",
-        "file": "ransomware_protection.log"
-    },
-    "yara": {
-        "rules_files": {
-            "ransomware": "rules/ransomware.yar",
-            "malware": "rules/malware.yar"
-        }
-    },
-    "pe_analysis": {
-        "enabled": true,
-        "entropy_threshold": 6.5
-    },
-    "process_monitor": {
-        "enabled": true,
-        "check_interval": 1.0
-    },
-    "network_monitor": {
-        "enabled": true,
-        "interface": "eth0"
-    },
-    "fim": {
-        "enabled": true,
-        "paths": ["/home", "/etc"],
-        "interval": 2.0
-    }
-}
-```
-
-## Зависимости
-
-Система требует следующие Python-библиотеки:
-- `yara` - для сканирования с правилами YARA
-- `pefile` - для анализа PE-файлов
-- `scapy` - для перехвата сетевого трафика
-- `psutil` - для мониторинга процессов
-- `cryptography` - для криптографических операций
-- `sqlite3` - для работы с базой данных (встроена в Python)
-
-## Запуск системы
-
-### Базовый запуск:
-```bash
-python3 firewall.py
-```
-
-### С пользовательской конфигурацией:
-```bash
-python3 firewall.py --config custom_config.json
-```
-
-### Тестирование системы:
-```bash
-python3 test_system.py
-```
-
-## Мониторинг и логирование
-
-Система ведет подробные логи всех операций:
-
-- **Операции**: Успешные/неуспешные операции модулей
-- **Безопасность**: События, связанные с безопасностью
-- **Ошибки**: Детальная информация об ошибках
-
-Логи сохраняются в файл `logs/ransomware_protection.log` и дублируются в консоль.
-
-## Производительность
-
-Система оптимизирована для:
-- Минимального влияния на производительность системы
-- Эффективного использования ресурсов
-- Масштабируемости для различных размеров систем
-
-## Безопасность
-
-Реализованы меры безопасности:
-- Защищенное хранение криптографических ключей
-- Ограниченные права доступа к файлам конфигурации
-- Валидация всех входных данных
-- Защита от внедрения кода
-
-## Расширение системы
-
-Система спроектирована с возможностью легкого расширения:
-- Добавление новых модулей мониторинга
-- Интеграция дополнительных алгоритмов детекции
-- Подключение внешних источников угроз
-- Расширение базы данных новыми таблицами
-
-## Поддержка
-
-Для получения поддержки или сообщения об ошибках создавайте issue в репозитории проекта.
+Tell me which of these you'd like me to do next and I will proceed.

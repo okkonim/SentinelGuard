@@ -1,4 +1,4 @@
-// Простая программа, именуемая notepad.exe, которая подключается к локальному серверу и отправляет сообщение
+// Simple program named notepad.exe that connects to a local server and sends a message
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,8 +27,8 @@ int main(int argc, char **argv) {
 
      const char *msg = "hello from notepad.exe\n";
      send(sock, msg, strlen(msg), 0);
-     /* Увеличиваем время ожидания, чтобы соединение оставалось видимым для мониторинга
-         и тест не пропускал аномалию из-за слишком быстрой разрыва */
+     /* Increase the wait time so the connection remains visible to the monitor
+         and the test doesn't miss the anomaly due to the connection closing too quickly */
      sleep(8);
     close(sock);
     return 0;

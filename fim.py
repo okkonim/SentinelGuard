@@ -112,7 +112,7 @@ class ThreatAnalyzer:
 
     def _is_pe_analysis_needed(self, file_path: str, event_type: str) -> bool:
         """Determine if PE analysis is needed for the file."""
-        return (event_type == "Файл изменен" and 
+        return (event_type == "File edited" and 
                 self.pe_analyzer.is_pe_file(file_path))
 
     def _perform_pe_analysis(self, file_path: str) -> None:
@@ -166,7 +166,7 @@ class ThreatAnalyzer:
                     )
             else:
                 # No YARA matches but file changed - potential unknown threat
-                if event_type == "Файл изменен":
+                if event_type == "File edited":
                     alert_message = f'No YARA matches but file changed: {file_path}'
                     RansomwareLogger.log_security_event(
                         'UNKNOWN_THREAT', 
@@ -199,7 +199,7 @@ class EncryptionDetector:
     def check_file_encryption(self, file_path: str, event_type: str) -> None:
         """Check if file appears to be encrypted."""
         try:
-            if event_type != "Файл изменен":
+            if event_type != "File edited":
                 return
                 
             if self.crypto_manager.is_file_encrypted(file_path):
@@ -213,7 +213,7 @@ class EncryptionDetector:
         self.encryption_events.append((current_time, file_path))
 
         # Log encryption event to database
-        self.db.insert_fim_event(file_path, "Файл зашифрован", 'CRITICAL')
+        self.db.insert_fim_event(file_path, "File encrypted", 'CRITICAL')
         
         RansomwareLogger.log_security_event(
             'FILE_ENCRYPTED',
@@ -245,11 +245,11 @@ class EncryptionDetector:
             file_list = ', '.join(affected_files[:5])  # Show first 5 files
             
             if encryption_count > 5:
-                file_list += f" и еще {encryption_count - 5} файлов"
+                file_list += f" and {encryption_count - 5} more files"
 
-            alert_message = (f"Массовое шифрование файлов обнаружено: "
-                           f"{encryption_count} файлов за {self.encryption_time_window} секунд")
-            details = f"Затронутые файлы: {file_list}"
+            alert_message = (f"Mass encryption detected: "
+                           f"{encryption_count} files in {self.encryption_time_window} seconds")
+            details = f"Affected files: {file_list}"
 
             RansomwareLogger.log_security_event(
                 'MASS_ENCRYPTION',
@@ -373,8 +373,12 @@ class FIM(LoggerMixin):
 
             RansomwareLogger.log_operation('FIM config loaded', True)
             
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            RansomwareLogger.log_error(e, "FIM configuration file missing or invalid - using defaults")
+            self.monitor_paths = ['./']
+            self.check_interval = 4
         except Exception as e:
-            RansomwareLogger.log_error(e, "Error loading FIM configuration")
+            RansomwareLogger.log_error(e, "Unexpected error loading FIM configuration - using defaults")
             self.monitor_paths = ['./']
             self.check_interval = 4
 
@@ -419,7 +423,7 @@ class FIM(LoggerMixin):
 
         # Insert initial event to database
         try:
-            self.db.insert_fim_event(','.join(self.monitor_paths), "FIM мониторинг запущен", 'INFO')
+            self.db.insert_fim_event(','.join(self.monitor_paths), "FIM monitoring started", 'INFO')
         except Exception as e:
             RansomwareLogger.log_error(e, "Failed to write initial FIM event")
 
@@ -448,12 +452,12 @@ class FIM(LoggerMixin):
                 current_hash = self.hash_calculator.calculate_file_hash(file_path)
                 if file_path not in self.file_hashes:
                     # New file
-                    self.file_event_handler.handle_file_change(file_path, "Файл создан", 'INFO')
+                    self.file_event_handler.handle_file_change(file_path, "File created", 'INFO')
                     if current_hash:
                         self.file_hashes[file_path] = current_hash
                 elif self.file_hashes[file_path] != current_hash:
                     # Modified file
-                    self.file_event_handler.handle_file_change(file_path, "Файл изменен", 'CRITICAL')
+                    self.file_event_handler.handle_file_change(file_path, "File edited", 'CRITICAL')
                     if current_hash:
                         self.file_hashes[file_path] = current_hash
 
@@ -468,11 +472,11 @@ class FIM(LoggerMixin):
         try:
             current_hash = self.hash_calculator.calculate_file_hash(file_path)
             if file_path not in self.file_hashes:
-                self.file_event_handler.handle_file_change(file_path, "Файл создан", 'INFO')
+                self.file_event_handler.handle_file_change(file_path, "File created", 'INFO')
                 if current_hash:
                     self.file_hashes[file_path] = current_hash
             elif self.file_hashes[file_path] != current_hash:
-                self.file_event_handler.handle_file_change(file_path, "Файл изменен", 'CRITICAL')
+                self.file_event_handler.handle_file_change(file_path, "File edited", 'CRITICAL')
                 if current_hash:
                     self.file_hashes[file_path] = current_hash
         except Exception as e:
@@ -484,7 +488,7 @@ class FIM(LoggerMixin):
             deleted_files = set(self.file_hashes.keys()) - current_files
             for file_path in deleted_files:
                 if file_path.startswith(directory):
-                    self.file_event_handler.handle_file_change(file_path, "Файл удален", 'WARNING')
+                    self.file_event_handler.handle_file_change(file_path, "File deleted", 'WARNING')
                     del self.file_hashes[file_path]
         except Exception as e:
             RansomwareLogger.log_error(e, f"Error checking deleted files in {directory}")

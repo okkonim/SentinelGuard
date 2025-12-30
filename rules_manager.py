@@ -1,5 +1,8 @@
 import json
 import ipaddress
+import logging
+
+logger = logging.getLogger(__name__)
 
 class RulesManager:
     def __init__(self, rules_file='rules.json'):
@@ -11,10 +14,10 @@ class RulesManager:
             with open(self.rules_file, 'r') as f:
                 return json.load(f)
         except FileNotFoundError:
-            print(f"Файл правил {self.rules_file} не найден.")
+            logger.warning(f"Rules file {self.rules_file} not found.")
             return []
         except json.JSONDecodeError:
-            print(f"Ошибка декодирования JSON из {self.rules_file}.")
+            logger.error(f"Error decoding JSON from {self.rules_file}.")
             return []
 
     def match_ip(self, packet_ip, rule_ip):

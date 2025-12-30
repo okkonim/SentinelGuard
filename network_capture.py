@@ -65,31 +65,29 @@ class NetworkCapture:
             except Exception as e:
                 logger.error(f"Failed to insert network event: {e}")
 
-            # Для демонстрации, вывод действия
+            # For demo purposes, log the action
             rule_info = f" (rule {rule_id})" if rule_id else " (implicit deny)"
-            print(f"Пакет [network_capture]: {source_ip}:{source_port} -> {dest_ip}:{dest_port} ({protocol}) - {action}{rule_info}")
+            logger.info(f"Packet [network_capture]: {source_ip}:{source_port} -> {dest_ip}:{dest_port} ({protocol}) - {action}{rule_info}")
         except Exception as e:
             logger.exception(f"Exception in packet_callback: {e}")
 
     def start_capture(self):
         self.running = True
-        print(f"Запуск захвата пакетов на интерфейсе {self.interface}")
-        # Проверим права: захват пакетов требует прав суперпользователя на Linux
+        logger.info(f"Starting packet capture on interface {self.interface}")
+        # Check permissions: packet capture requires root privileges on Linux
         try:
             if os.name == 'posix' and os.geteuid() != 0:
                 logger.error("Sniffing requires root privileges. Please run as root (sudo).")
-                print("Ошибка: захват пакетов требует прав суперпользователя (sudo). Перезапустите с sudo.")
                 self.running = False
                 return
         except AttributeError:
             # os.geteuid may not exist on some platforms (Windows), ignore
             pass
         if sniff is None:
-            print("Ошибка: модуль scapy не установлен. Установите пакет scapy и повторите попытку.")
+            logger.error("Error: scapy module is not installed. Install scapy and try again.")
             self.running = False
             return
 
-        # Проверим интерфейс: если заданный интерфейс отсутствует, используем scapy.conf.iface
         try:
             available_ifaces = []
             try:
@@ -115,8 +113,8 @@ class NetworkCapture:
 
     def stop_capture(self):
         self.running = False
-        print("Остановка захвата пакетов")
+        logger.info("Stopping packet capture")
 
     def reload_rules(self):
         self.rules_manager.rules = self.rules_manager.load_rules()
-        print("Правила перезагружены")
+        logger.info("Rules reloaded")

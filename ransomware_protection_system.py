@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+ #!/usr/bin/env python3
 """
 Refactored Ransomware Protection System for ransomware protection system.
 Provides structured system management with centralized logging and error handling.
@@ -224,18 +224,18 @@ class StatusReporter(LoggerMixin):
         """Display comprehensive system status."""
         try:
             print("\n" + "=" * 60)
-            print("СТАТУС СИСТЕМЫ ЗАЩИТЫ ОТ ПРОГРАММ-ВЫМОГАТЕЛЕЙ")
+            print("Ransomware protection system status")
             print("=" * 60)
-            print(f"Время: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            print(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
             
             # System info
             config = self.config_manager.config
             db_name = config.get('database', {}).get('name', 'firewall.db')
             config_path = self.config_manager.config_path
             
-            print(f"База данных: {db_name}")
-            print(f"Конфигурация: {config_path}")
-            print(f"Статус: {SYSTEM_RUNNING if running else SYSTEM_STOPPED}")
+            print(f"Database: {db_name}")
+            print(f"Configuration: {config_path}")
+            print(f"Status: {SYSTEM_RUNNING if running else SYSTEM_STOPPED}")
             
             # Module status
             self._display_module_status()
@@ -250,14 +250,14 @@ class StatusReporter(LoggerMixin):
 
     def _display_module_status(self) -> None:
         """Display status of all system modules."""
-        print("\nМодули системы:")
+        print("\nSystem modules:")}
         
         modules = self.config_manager.get_module_config()
         
         for module, enabled in modules.items():
             status_icon = "✓" if enabled else "✗"
             module_name = MODULE_NAMES.get(module, module)
-            status_text = "Включен" if enabled else "Отключен"
+            status_text = "Enabled" if enabled else "Disabled"
             print(f"  {status_icon} {module_name}: {status_text}")
 
     def _display_event_statistics(self) -> None:
@@ -266,25 +266,25 @@ class StatusReporter(LoggerMixin):
             event_aggregator = EventAggregator(self.db)
             stats = event_aggregator.get_event_statistics()
             
-            print(f"\nСтатистика событий:")
-            print(f"  FIM события: {stats.get(DB_TABLE_FIM_EVENTS, 0)}")
-            print(f"  События процессов: {stats.get(DB_TABLE_PROCESS_EVENTS, 0)}")
-            print(f"  Оповещения безопасности: {stats.get(DB_TABLE_NETSEC_ALERTS, 0)}")
-            print(f"  YARA события: {stats.get(DB_TABLE_YARA_EVENTS, 0)}")
+            print(f"\nEvent statistics:")
+            print(f"  FIM events: {stats.get(DB_TABLE_FIM_EVENTS, 0)}")
+            print(f"  Process events: {stats.get(DB_TABLE_PROCESS_EVENTS, 0)}")
+            print(f"  Security alerts: {stats.get(DB_TABLE_NETSEC_ALERTS, 0)}")
+            print(f"  YARA events: {stats.get(DB_TABLE_YARA_EVENTS, 0)}")
             
         except Exception as e:
             RansomwareLogger.log_error(e, "Error displaying event statistics")
 
     def display_alerts(self, limit: int = 20) -> None:
         """Display recent security alerts."""
-        print(f"\nПоследние {limit} оповещений системы безопасности:")
+        print(f"\nLast {limit} security alerts:")
         print("-" * 80)
         
         try:
             alerts = self.db.query_events(DB_TABLE_NETSEC_ALERTS, limit)
             
             if not alerts:
-                print("Оповещения безопасности отсутствуют")
+                print("No security alerts")
                 return
             
             for alert in alerts:
@@ -304,11 +304,11 @@ class StatusReporter(LoggerMixin):
             severity_icon = SEVERITY_COLORS.get(severity, SEVERITY_INFO)
             
             print(f"{severity_icon} [{severity}] {timestamp}")
-            print(f"   Тип: {alert_type}")
-            print(f"   Описание: {description}")
+            print(f"   Type: {alert_type}")
+            print(f"   Description: {description}")
             
             if len(alert) > 5 and alert[5]:  # details
-                print(f"   Детали: {alert[5]}")
+                print(f"   Details: {alert[5]}")
             print()
             
         except Exception as e:
@@ -316,14 +316,14 @@ class StatusReporter(LoggerMixin):
 
     def display_ransomware_attacks(self, hours: int = 24) -> None:
         """Display recent ransomware attacks."""
-        print(f"\nАтаки программ-вымогателей за последние {hours} часов:")
+        print(f"\nRansomware attacks in the last {hours} hours:")
         print("-" * 80)
         
         try:
             attacks = self.db.get_recent_ransomware_attacks(hours)
             
             if not attacks:
-                print("Атаки программ-вымогателей не обнаружены")
+                print("No ransomware attacks found")
                 return
 
             for attack in attacks:
@@ -344,17 +344,18 @@ class StatusReporter(LoggerMixin):
             confidence_icon = "🔴" if confidence >= 0.8 else "🟠" if confidence >= 0.6 else "🟡"
             
             print(f"{confidence_icon} [{confidence:.2f}] {timestamp}")
-            print(f"   Тип атаки: {attack_type}")
-            print(f"   Описание: {description}")
-            print(f"   Статус: {status}")
+            print(f"   Attack type: {attack_type}")
+            print(f"   Description: {description}")
+            print(f"   Status: {status}")
             
             if len(attack) > 5 and attack[5]:  # affected files
                 try:
                     files = json.loads(attack[5])
                     if files:
-                        print(f"   Затронутые файлы: {len(files)}")
-                except:
-                    print(f"   Затронутые файлы: Data unavailable")
+                        print(f"   Affected files: {len(files)}")
+                except (json.JSONDecodeError, TypeError) as e:
+                    RansomwareLogger.log_error(e, "Failed to parse affected files data for attack display")
+                    print(f"   Affected files: Data unavailable")
             print()
             
         except Exception as e:
@@ -480,11 +481,11 @@ class SystemManager(LoggerMixin):
     def start_protection(self) -> bool:
         """Start the ransomware protection system."""
         if self.running:
-            print("Система защиты уже запущена")
+            print("Protection system is already running")
             return True
 
         print("=" * 60)
-        print("ЗАПУСК ГИБРИДНОЙ СИСТЕМЫ ЗАЩИТЫ ОТ ПРОГРАММ-ВЫМОГАТЕЛЕЙ")
+        print("STARTING HYBRID RANSOMWARE PROTECTION SYSTEM")
         print("=" * 60)
         
         self.running = True
@@ -496,8 +497,8 @@ class SystemManager(LoggerMixin):
             # Start correlation engine
             self._start_correlation_engine()
             
-            print("✓ Система защиты запущена успешно")
-            print("✓ Все модули работают в режиме реального времени")
+            print("✓ Protection system started successfully")
+            print("✓ All modules are running in real time")
             print("=" * 60)
             
             return True
@@ -512,7 +513,7 @@ class SystemManager(LoggerMixin):
         try:
             # Start FIM monitoring
             if self.fim:
-                print("Запуск FIM мониторинга...")
+                print("Starting FIM monitoring...")
                 fim_thread = threading.Thread(target=self._start_fim_monitoring, daemon=True)
                 fim_thread.start()
                 self.threads.append(fim_thread)
@@ -520,7 +521,7 @@ class SystemManager(LoggerMixin):
 
             # Start process monitoring
             if self.process_monitor:
-                print("Запуск мониторинга процессов...")
+                print("Starting process monitoring...")
                 process_thread = threading.Thread(target=self._start_process_monitoring, daemon=True)
                 process_thread.start()
                 self.threads.append(process_thread)
@@ -528,7 +529,7 @@ class SystemManager(LoggerMixin):
 
             # Start network sniffer (optional)
             if self.network_sniffer:
-                print("Запуск сетевого сниффера...")
+                print("Starting network sniffer...")
                 network_thread = threading.Thread(target=self._start_network_monitoring, daemon=True)
                 network_thread.start()
                 self.threads.append(network_thread)
@@ -536,11 +537,13 @@ class SystemManager(LoggerMixin):
                 
         except Exception as e:
             RansomwareLogger.log_error(e, "Error starting security modules")
+            # Re-raise as critical system initialization failure so caller can clean up
+            raise RansomwareProtectionError("Failed to start one or more security modules")
 
     def _start_correlation_engine(self) -> None:
         """Start the event correlation engine."""
         try:
-            print("Запуск движка корреляции событий...")
+            print("Starting event correlation engine...")
             correlation_thread = threading.Thread(target=self.correlation_engine.start_correlation, daemon=True)
             correlation_thread.start()
             self.threads.append(correlation_thread)
@@ -572,7 +575,7 @@ class SystemManager(LoggerMixin):
     def stop_protection(self) -> None:
         """Stop the ransomware protection system."""
         if not self.running:
-            print("Система защиты не запущена")
+            print("Protection system is not running")
             return
 
         print("\nОстановка системы защиты...")
@@ -594,7 +597,7 @@ class SystemManager(LoggerMixin):
                 if thread.is_alive():
                     thread.join(timeout=2)
 
-            print("✓ Система защиты остановлена")
+            print("✓ Protection system stopped")
             print("=" * 60)
             
         except Exception as e:
@@ -604,20 +607,20 @@ class SystemManager(LoggerMixin):
         """Manually encrypt a file."""
         try:
             if not os.path.exists(file_path):
-                print(f"Файл не найден: {file_path}")
+                print(f"File not found: {file_path}")
                 return False
 
             RansomwareLogger.log_operation(f'Manual encryption started: {file_path}', False)
-            print(f"Шифрование файла: {file_path}")
+            print(f"Encrypting file: {file_path}")
             
             success = self.crypto_manager.encrypt_file(file_path, key_file)
             
             if success:
-                print(f"✓ Файл успешно зашифрован: {file_path}")
-                self.db.insert_fim_event(file_path, "Файл зашифрован вручную", SEVERITY_INFO)
+                print(f"✓ File encrypted successfully: {file_path}")
+                self.db.insert_fim_event(file_path, "File encrypted manually", SEVERITY_INFO)
                 RansomwareLogger.log_operation(f'Manual encryption completed: {file_path}', True)
             else:
-                print(f"✗ Ошибка шифрования файла: {file_path}")
+                print(f"✗ File encryption error: {file_path}")
                 RansomwareLogger.log_operation(f'Manual encryption failed: {file_path}', False)
             
             return success
@@ -630,16 +633,16 @@ class SystemManager(LoggerMixin):
         """Manually decrypt a file."""
         try:
             RansomwareLogger.log_operation(f'Manual decryption started: {file_path}', False)
-            print(f"Дешифрование файла: {file_path}")
+            print(f"Decrypting file: {file_path}")
             
             success = self.crypto_manager.decrypt_file(file_path, key_file)
             
             if success:
-                print(f"✓ Файл успешно расшифрован: {file_path}")
-                self.db.insert_fim_event(file_path, "Файл расшифрован вручную", SEVERITY_INFO)
+                print(f"✓ File decrypted successfully: {file_path}")
+                self.db.insert_fim_event(file_path, "File decrypted manually", SEVERITY_INFO)
                 RansomwareLogger.log_operation(f'Manual decryption completed: {file_path}', True)
             else:
-                print(f"✗ Ошибка дешифрования файла: {file_path}")
+                print(f"✗ File decryption error: {file_path}")
                 RansomwareLogger.log_operation(f'Manual decryption failed: {file_path}', False)
             
             return success
@@ -650,7 +653,7 @@ class SystemManager(LoggerMixin):
 
     def attempt_rollback(self, file_path: str, backup_path: str = None) -> bool:
         """Attempt to rollback a file."""
-        print(f"\nПопытка отката файла: {file_path}")
+        print(f"\nAttempt to rollback a file: {file_path}")
         print("-" * 40)
         
         try:
@@ -658,11 +661,11 @@ class SystemManager(LoggerMixin):
             success = self.db.attempt_rollback(file_path, backup_path)
             
             if success:
-                print(f"✓ Откат файла {file_path} выполнен успешно")
-                self.db.insert_fim_event(file_path, "Файл восстановлен из резервной копии", SEVERITY_INFO)
+                print(f"✓ File rollback successful: {file_path} выполнен успешно")
+                self.db.insert_fim_event(file_path, "File restored from backup", SEVERITY_INFO)
                 RansomwareLogger.log_operation(f'Rollback completed: {file_path}', True)
             else:
-                print(f"✗ Ошибка отката файла {file_path}")
+                print(f"✗ File rollback error: {file_path}")
                 RansomwareLogger.log_operation(f'Rollback failed: {file_path}', False)
             
             return success
@@ -673,12 +676,12 @@ class SystemManager(LoggerMixin):
 
     def cleanup_system(self, days: int = 30) -> None:
         """Clean up old events from database."""
-        print(f"\nОчистка старых событий (старше {days} дней)...")
+        print(f"\nClean up old events (older then {days} days)...")
         
         try:
             RansomwareLogger.log_operation(f'Database cleanup started (>{days} days)', False)
             self.db.cleanup_old_events(days)
-            print("✓ Очистка базы данных завершена")
+            print("✓ Database cleanup completed")
             RansomwareLogger.log_operation('Database cleanup completed', True)
             
         except Exception as e:
@@ -696,17 +699,17 @@ class SystemManager(LoggerMixin):
             "data.json"
         ]
         
-        print(f"\nСоздание тестовых файлов в {directory}:")
+        print(f"\nCreating test files in {directory}:")
         
         try:
             for filename in test_files:
                 file_path = os.path.join(directory, filename)
-                content = f"Тестовый файл {filename}\nСоздан: {datetime.now()}\nСодержимое для тестирования шифрования."
+                content = f"Test file {filename}\nCreated: {datetime.now()}\nContent for encryption testing."
                 
                 with open(file_path, 'w', encoding='utf-8') as f:
                     f.write(content)
                 
-                print(f"  ✓ Создан: {filename}")
+                print(f"  ✓ Created: {filename}")
             
             print(f"✓ Создано {len(test_files)} тестовых файлов")
             RansomwareLogger.log_operation(f'Test files created in {directory}', True)
@@ -743,66 +746,66 @@ class CLIHandler(LoggerMixin):
     def _create_parser(self) -> argparse.ArgumentParser:
         """Create argument parser for CLI."""
         parser = argparse.ArgumentParser(
-            description='Гибридная система защиты от программ-вымогателей',
+            description='Hybrid ransomware protection system',
             formatter_class=argparse.RawDescriptionHelpFormatter,
             epilog="""
-Примеры использования:
-  %(prog)s start                    # Запустить систему защиты
-  %(prog)s stop                     # Остановить систему защиты
-  %(prog)s status                   # Показать статус системы
-  %(prog)s encrypt test.txt         # Зашифровать файл
-  %(prog)s decrypt test.txt.encrypted # Расшифровать файл
-  %(prog)s alerts                   # Показать оповещения
-  %(prog)s attacks                  # Показать атаки ransomware
-  %(prog)s rollback test.txt        # Откатить файл
-  %(prog)s cleanup 30               # Очистить события старше 30 дней
+Usage examples:
+  %(prog)s start                    # Start protection system
+  %(prog)s stop                     # Stop protection system
+  %(prog)s status                   # Show system status
+  %(prog)s encrypt test.txt         # Encrypt file
+  %(prog)s decrypt test.txt.encrypted # Decrypt file
+  %(prog)s alerts                   # Show alerts
+  %(prog)s attacks                  # Show ransomware attacks
+  %(prog)s rollback test.txt        # Rollback file
+  %(prog)s cleanup 30               # Cleanup events older than 30 days
             """
         )
         
-        parser.add_argument('--config', default='config.json', help='Путь к файлу конфигурации')
-        parser.add_argument('--db', default='firewall.db', help='Имя файла базы данных')
+        parser.add_argument('--config', default='config.json', help='Path to configuration file')
+        parser.add_argument('--db', default='firewall.db', help='Database file name')
         
-        subparsers = parser.add_subparsers(dest='command', help='Доступные команды')
+        subparsers = parser.add_subparsers(dest='command', help='Available commands')
         
         # Start command
-        subparsers.add_parser('start', help='Запустить систему защиты')
+        subparsers.add_parser('start', help='Start protection system')
         
         # Stop command
-        subparsers.add_parser('stop', help='Остановить систему защиты')
+        subparsers.add_parser('stop', help='Stop protection system')
         
         # Status command
-        subparsers.add_parser('status', help='Показать статус системы')
+        subparsers.add_parser('status', help='Show system status')
         
         # Encrypt command
-        encrypt_parser = subparsers.add_parser('encrypt', help='Зашифровать файл')
-        encrypt_parser.add_argument('file', help='Путь к файлу для шифрования')
-        encrypt_parser.add_argument('--key', help='Путь к файлу ключа')
+        encrypt_parser = subparsers.add_parser('encrypt', help='Encrypt file')
+        encrypt_parser.add_argument('file', help='Path to file to encrypt')
+        encrypt_parser.add_argument('--key', help='Path to key file')
         
         # Decrypt command
-        decrypt_parser = subparsers.add_parser('decrypt', help='Расшифровать файл')
-        decrypt_parser.add_argument('file', help='Путь к файлу для дешифрования')
-        decrypt_parser.add_argument('--key', help='Путь к файлу ключа')
+        decrypt_parser = subparsers.add_parser('decrypt', help='Decrypt file')
+        decrypt_parser.add_argument('file', help='Path to file to decrypt')
+        decrypt_parser.add_argument('--key', help='Path to key file')
         
         # Alerts command
-        alerts_parser = subparsers.add_parser('alerts', help='Показать оповещения системы')
-        alerts_parser.add_argument('--limit', type=int, default=20, help='Количество оповещений для показа')
+        alerts_parser = subparsers.add_parser('alerts', help='Show system alerts')
+        alerts_parser.add_argument('--limit', type=int, default=20, help='Number of alerts to show')
         
         # Attacks command
-        attacks_parser = subparsers.add_parser('attacks', help='Показать атаки ransomware')
-        attacks_parser.add_argument('--hours', type=int, default=24, help='Количество часов для анализа')
+        attacks_parser = subparsers.add_parser('attacks', help='Show ransomware attacks')
+        attacks_parser.add_argument('--hours', type=int, default=24, help='Number of hours to analyze')
         
         # Rollback command
-        rollback_parser = subparsers.add_parser('rollback', help='Откатить файл')
-        rollback_parser.add_argument('file', help='Путь к файлу для отката')
-        rollback_parser.add_argument('--backup', help='Путь к резервной копии')
+        rollback_parser = subparsers.add_parser('rollback', help='Rollback file')
+        rollback_parser.add_argument('file', help='Path to file to rollback')
+        rollback_parser.add_argument('--backup', help='Path to backup file')
         
         # Cleanup command
-        cleanup_parser = subparsers.add_parser('cleanup', help='Очистить старые события')
-        cleanup_parser.add_argument('days', type=int, default=30, help='Количество дней для хранения')
+        cleanup_parser = subparsers.add_parser('cleanup', help='Cleanup old events')
+        cleanup_parser.add_argument('days', type=int, default=30, help='Number of days to keep')
         
         # Test command
-        test_parser = subparsers.add_parser('test', help='Создать тестовые файлы')
-        test_parser.add_argument('--dir', default='./test_files', help='Директория для тестовых файлов')
+        test_parser = subparsers.add_parser('test', help='Create test files')
+        test_parser.add_argument('--dir', default='./test_files', help='Directory for test files')
         
         return parser
 
@@ -823,7 +826,7 @@ class CLIHandler(LoggerMixin):
                 self.system_manager.stop_protection()
         except Exception as e:
             RansomwareLogger.log_error(e, "Error handling CLI command")
-            print(f"Ошибка: {e}")
+            print(f"Error: {e}")
 
     def _execute_command(self, args: argparse.Namespace) -> None:
         """Execute the parsed command."""
@@ -895,7 +898,7 @@ def main():
         
     except Exception as e:
         RansomwareLogger.log_error(e, "Fatal error in main")
-        print(f"Критическая ошибка: {e}")
+        print(f"Critical error: {e}")
         sys.exit(1)
 
 

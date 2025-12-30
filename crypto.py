@@ -241,22 +241,33 @@ class FileProcessor:
                 chunk = infile.read(chunk_size)
                 if not chunk:
                     break
+                # Encrypt chunk and write its length first so decryption can read exact boundaries
                 encrypted_chunk = self.key_manager.fernet.encrypt(chunk)
+                outfile.write(len(encrypted_chunk).to_bytes(4, 'big'))
                 outfile.write(encrypted_chunk)
 
     def _perform_file_decryption(self, file_path: str, output_path: str, chunk_size: int) -> None:
         """Perform the actual file decryption operation."""
         with open(file_path, 'rb') as infile, open(output_path, 'wb') as outfile:
             # Read original file hash
-            hash_length = int.from_bytes(infile.read(4), 'big')
+            hash_length_data = infile.read(4)
+            if len(hash_length_data) < 4:
+                raise CryptoError(f"Invalid encrypted file format: {file_path}")
+            hash_length = int.from_bytes(hash_length_data, 'big')
             original_hash = infile.read(hash_length).decode()
 
             while True:
-                chunk = infile.read(chunk_size + 16 + 1)  # Account for Fernet overhead
-                if not chunk:
-                    break
+                # Read the next encrypted chunk length
+                length_bytes = infile.read(4)
+                if not length_bytes or len(length_bytes) < 4:
+                    break  # No more chunks
+                enc_len = int.from_bytes(length_bytes, 'big')
+                encrypted_chunk = infile.read(enc_len)
+                if len(encrypted_chunk) < enc_len:
+                    raise CryptoError(f"Incomplete encrypted chunk in {file_path}")
+
                 try:
-                    decrypted_chunk = self.key_manager.fernet.decrypt(chunk)
+                    decrypted_chunk = self.key_manager.fernet.decrypt(encrypted_chunk)
                     outfile.write(decrypted_chunk)
                 except InvalidToken:
                     raise CryptoError(f"Invalid token during decryption of {file_path}")
@@ -319,37 +330,22 @@ class FileProcessor:
     def _calculate_entropy(self, data: bytes) -> float:
         """Calculate Shannon entropy of data."""
         if not data:
-            return 0
+            return 0.0
 
-        entropy = 0
-        data_len = len(data)
-        for x in range(256):
-            p_x = float(data.count(x)) / data_len
-            if p_x > 0:
-                entropy += - p_x * (p_x ** p_x).bit_length()  # This is incorrect
-        
-        # Fix: Use proper Shannon entropy calculation
-        entropy = 0
-        for x in range(256):
-            p_x = float(data.count(x)) / data_len
-            if p_x > 0:
-                entropy += - p_x * (p_x ** p_x).bit_length()  # Still wrong
-        
-        # Correct calculation
-        entropy = 0
-        for x in range(256):
-            p_x = float(data.count(x)) / data_len
-            if p_x > 0:
-                entropy += - p_x * (p_x ** p_x).bit_length()  # Wrong approach
-        
-        # Proper Shannon entropy
-        entropy = 0
         import math
-        for x in range(256):
-            p_x = float(data.count(x)) / data_len
-            if p_x > 0:
-                entropy += - p_x * math.log2(p_x)
-        
+        data_len = len(data)
+        entropy = 0.0
+        # Count byte frequencies once for efficiency
+        byte_counts = [0] * 256
+        for b in data:
+            byte_counts[b] += 1
+
+        for count in byte_counts:
+            if count == 0:
+                continue
+            p_x = count / data_len
+            entropy -= p_x * math.log2(p_x)
+
         return entropy
 
 

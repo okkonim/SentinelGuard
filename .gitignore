@@ -122,4 +122,4 @@ tests/test_file.txt.gpg
 test_file*.txt
 test_ransomware/*
 network_baseline.json
-
+test_key.bin

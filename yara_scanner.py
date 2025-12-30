@@ -177,13 +177,14 @@ class YaraRuleManager(LoggerMixin):
                 try:
                     matches = self.rules.match(temp_file)
                     info['rule_count'] = len(matches) if matches else 0
-                except:
+                except Exception as e:
+                    RansomwareLogger.log_error(e, "Error matching rules for temporary yara test file")
                     info['rule_count'] = 0
                 finally:
                     try:
                         os.remove(temp_file)
-                    except:
-                        pass
+                    except Exception as e:
+                        RansomwareLogger.log_error(e, f"Failed to remove temporary yara test file: {temp_file}")
                         
             except Exception as e:
                 RansomwareLogger.log_error(e, "Error getting YARA rules info")
@@ -375,7 +376,11 @@ class YaraScanner(LoggerMixin):
                 return strings
             else:
                 # Fallback for older YARA versions
-                return [{'identifier': str(s), 'instances': []} for s in match.strings]
+                try:
+                    return [{'identifier': str(s), 'instances': []} for s in match.strings]
+                except Exception as e:
+                    RansomwareLogger.log_error(e, "Error extracting strings info from older YARA match structure")
+                    return []
                 
         except Exception as e:
             RansomwareLogger.log_error(e, "Error extracting strings info from YARA match")

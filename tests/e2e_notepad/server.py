@@ -11,7 +11,7 @@ def run_server(port=9001):
     data = conn.recv(1024)
     # echo and close
     conn.sendall(data)
-    # Удерживаем соединение подольше, чтобы монитор успел его увидеть
+    # Keep the connection open longer so the monitor can detect it
     try:
         import time
         time.sleep(8)

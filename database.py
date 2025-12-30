@@ -196,7 +196,7 @@ class Database:
             VALUES (?, ?, ?, ?)
         ''', (timestamp, file_path, event_type, criticality))
         conn.commit()
-        logger.warning(f"FIM событие: {event_type} для {file_path}")
+        logger.warning(f"FIM event: {event_type} for {file_path}")
 
     def insert_process_event(self, pid, process_name, event_type, criticality='INFO'):
         timestamp = datetime.datetime.now().isoformat()
@@ -207,7 +207,7 @@ class Database:
             VALUES (?, ?, ?, ?, ?)
         ''', (timestamp, pid, process_name, event_type, criticality))
         conn.commit()
-        logger.info(f"Событие процесса: {process_name} (PID {pid}) - {event_type}")
+        logger.info(f"Process event: {process_name} (PID {pid}) - {event_type}")
 
     def insert_netsec_alert(self, alert_type, description, severity='medium', details=None):
         timestamp = datetime.datetime.now().isoformat()
@@ -217,7 +217,7 @@ class Database:
             VALUES (?, ?, ?, ?, ?)
         ''', (timestamp, alert_type, description, severity, details))
         self.conn.commit()
-        logger.warning(f"NetSec Оповещение [{severity.upper()}]: {description}")
+        logger.warning(f"NetSec Alert [{severity.upper()}]: {description}")
 
     def insert_yara_event(self, file_path, rule_name, event_type, criticality='WARNING', details=None):
         timestamp = datetime.datetime.now().isoformat()
@@ -228,7 +228,7 @@ class Database:
             VALUES (?, ?, ?, ?, ?, ?)
         ''', (timestamp, file_path, rule_name, event_type, criticality, details))
         conn.commit()
-        logger.warning(f"YARA событие: {rule_name} в {file_path} - {event_type}")
+        logger.warning(f"YARA event: {rule_name} in {file_path} - {event_type}")
 
     def insert_pe_file(self, file_path, sha256, architecture=None, entry_point=None, characteristics=None):
         timestamp = datetime.datetime.now().isoformat()
@@ -406,7 +406,7 @@ class Database:
         recent_network_events = cursor.fetchall()
         
         # Analyze patterns
-        mass_encryption_events = [e for e in recent_fim_events if 'массовое шифрование' in e[3].lower()]
+        mass_encryption_events = [e for e in recent_fim_events if 'mass encryption' in e[3].lower()]
         suspicious_processes = [e for e in recent_process_events if 'ransomware' in e[4].lower()]
         cc_connections = [e for e in recent_network_events if 'c_and_c' in e[2].lower()]
         
@@ -423,8 +423,9 @@ class Database:
         if confidence_score >= 0.7:
             description = f"Ransomware attack detected with confidence {confidence_score:.2f}"
             affected_files = [e[2] for e in mass_encryption_events] if mass_encryption_events else []
-            process_pid = suspicious_processes[0][1] if suspicious_processes else None
-            process_name = suspicious_processes[0][2] if suspicious_processes else None
+            # process_events columns: id, timestamp, pid, process_name, event_type, criticality
+            process_pid = suspicious_processes[0][2] if suspicious_processes else None
+            process_name = suspicious_processes[0][3] if suspicious_processes else None
             
             attack_id = self.insert_ransomware_attack(
                 confidence_score, 'MALWARE', description, affected_files, process_pid, process_name

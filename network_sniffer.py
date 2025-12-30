@@ -120,8 +120,8 @@ class PacketProcessor(LoggerMixin):
             if TCP in packet and (packet[TCP].dport == 80 or packet[TCP].sport == 80 or
                                   packet[TCP].dport == 443 or packet[TCP].sport == 443):
                 return HTTPRequest in packet or HTTPResponse in packet
-        except:
-            pass
+        except Exception as e:
+            RansomwareLogger.log_error(e, "Error detecting HTTP traffic")
         return False
 
 
@@ -428,8 +428,8 @@ class PayloadAnalyzer(LoggerMixin):
         finally:
             try:
                 os.remove(temp_file)
-            except:
-                pass
+            except Exception as e:
+                RansomwareLogger.log_error(e, f"Failed to remove temporary payload file: {temp_file}")
 
     def _check_executable_downloads(self, packet_info: Dict[str, Any], payload: bytes) -> List[Dict[str, Any]]:
         """Check for executable file downloads."""
@@ -459,8 +459,8 @@ class PayloadAnalyzer(LoggerMixin):
                 
                 try:
                     os.remove(temp_file)
-                except:
-                    pass
+                except Exception as e:
+                    RansomwareLogger.log_error(e, f"Failed to remove temporary download file: {temp_file}")
         
         except Exception as e:
             RansomwareLogger.log_error(e, "Error checking executable downloads")
@@ -484,8 +484,9 @@ class PayloadAnalyzer(LoggerMixin):
                                                      'application/x-executable',
                                                      'application/x-msdownload']):
                     return True
-        except:
-            pass
+        except Exception as e:
+            RansomwareLogger.log_error(e, "Error parsing payload for content-type header")
+            return False
         
         return False
 
@@ -535,8 +536,11 @@ class ConnectionTracker(LoggerMixin):
                         if conn.pid:
                             return self._get_process_info(conn.pid, packet_info)
             return None
+        except (psutil.NoSuchProcess, psutil.AccessDenied) as e:
+            RansomwareLogger.log_error(e, "Error linking network activity to process - process info unavailable")
+            return None
         except Exception as e:
-            RansomwareLogger.log_error(e, "Error linking network activity to process")
+            RansomwareLogger.log_error(e, "Unexpected error linking network activity to process")
             return None
 
     def _get_process_info(self, pid: int, packet_info: Dict[str, Any]) -> Dict[str, Any]:
@@ -634,8 +638,11 @@ class NetworkSniffer(LoggerMixin):
             RansomwareLogger.log_operation('NetworkSniffer config loaded', True)
             return config
 
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            RansomwareLogger.log_error(e, "NetworkSniffer configuration file missing or invalid - using defaults")
+            return {}
         except Exception as e:
-            RansomwareLogger.log_error(e, "Error loading NetworkSniffer configuration")
+            RansomwareLogger.log_error(e, "Unexpected error loading NetworkSniffer configuration")
             return {}
 
     def start_sniffing(self) -> bool:
@@ -853,9 +860,9 @@ class NetworkSniffer(LoggerMixin):
                 'LOW': '🟢'
             }.get(anomaly['severity'], '⚪')
             
-            print(f"[{severity_icon}] {anomaly['type']}: {anomaly['description']}")
+            self.logger.info("[%s] %s: %s", severity_icon, anomaly['type'], anomaly['description'])
             if anomaly.get('details'):
-                print(f"  Details: {anomaly['details']}")
+                self.logger.info("  Details: %s", anomaly['details'])
                 
         except Exception as e:
             RansomwareLogger.log_error(e, "Error creating anomaly alert")
@@ -893,15 +900,15 @@ class NetworkSniffer(LoggerMixin):
         """Print final statistics"""
         runtime = datetime.now() - self.stats['start_time'] if self.stats['start_time'] else timedelta(0)
 
-        print("\n" + "="*60)
-        print("NETWORK SNIFFER STATISTICS")
-        print("="*60)
-        print(f"Runtime: {runtime}")
-        print(f"Packets captured: {self.stats['packets_captured']}")
-        print(f"Packets processed: {self.stats['packets_processed']}")
-        print(f"Anomalies detected: {self.stats['anomalies_detected']}")
-        print(f"YARA matches: {self.stats['yara_matches']}")
-        print("="*60)
+        self.logger.info("%s", "\n" + "="*60)
+        self.logger.info("NETWORK SNIFFER STATISTICS")
+        self.logger.info("%s", "="*60)
+        self.logger.info("Runtime: %s", runtime)
+        self.logger.info("Packets captured: %s", self.stats['packets_captured'])
+        self.logger.info("Packets processed: %s", self.stats['packets_processed'])
+        self.logger.info("Anomalies detected: %s", self.stats['anomalies_detected'])
+        self.logger.info("YARA matches: %s", self.stats['yara_matches'])
+        self.logger.info("%s", "="*60)
 
     def get_stats(self):
         """Get current statistics"""
@@ -909,8 +916,8 @@ class NetworkSniffer(LoggerMixin):
 
     def reload_config(self):
         """Reload configuration"""
-        self.load_config()
-        print("Network sniffer configuration reloaded")
+        self._load_config()
+        self.logger.info("Network sniffer configuration reloaded")
 
 
 def main():
@@ -943,11 +950,12 @@ def main():
         config_path=args.config
     )
 
-    print("Hybrid Network Sniffer with Threat Detection")
-    print("=" * 50)
-    print(f"Interface: {args.interface}")
-    print(f"Filter: {args.filter or 'tcp or udp or icmp'}")
-    print("Starting sniffer... (Ctrl+C to stop)")
+    logger = RansomwareLogger.get_logger('NetworkSniffer')
+    logger.info("Hybrid Network Sniffer with Threat Detection")
+    logger.info("%s", "=" * 50)
+    logger.info("Interface: %s", args.interface)
+    logger.info("Filter: %s", args.filter or 'tcp or udp or icmp')
+    logger.info("Starting sniffer... (Ctrl+C to stop)")
 
     try:
         if sniffer.start_sniffing():

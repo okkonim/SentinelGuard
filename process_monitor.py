@@ -103,9 +103,9 @@ class ProcessWatcher(LoggerMixin):
     def _display_current_processes(self) -> None:
         """Display current running processes."""
         try:
-            print("Текущие процессы:")
-            print(f"{'PID':<10} {'PPID':<10} {'Имя':<20} {'Путь':<50} {'Аргументы'}")
-            print("-" * 100)
+            self.logger.info("Current processes:")
+            self.logger.info("%s", f"{'PID':<10} {'PPID':<10} {'Name':<20} {'Path':<50} {'Arguments'}")
+            self.logger.info("%s", '-' * 100)
             
             for proc in psutil.process_iter(attrs=['pid', 'ppid', 'name', 'exe', 'cmdline']):
                 try:
@@ -115,7 +115,7 @@ class ProcessWatcher(LoggerMixin):
                     name = info.get('name', 'N/A')
                     exe = info.get('exe', 'N/A')
                     cmdline = ' '.join(info.get('cmdline', [])) if info.get('cmdline') else 'N/A'
-                    print(f"{pid:<10} {ppid:<10} {name:<20} {exe:<50} {cmdline}")
+                    self.logger.info("%s", f"{pid:<10} {ppid:<10} {name:<20} {exe:<50} {cmdline}")
                 except (psutil.NoSuchProcess, psutil.AccessDenied):
                     continue
                     
@@ -364,7 +364,7 @@ class RansomwareDetector(LoggerMixin):
         if self.vssadmin_suspicious and name.lower() == 'vssadmin.exe':
             self._trigger_ransomware_alert(
                 pid, name, exe_path,
-                "Обнаружен vssadmin.exe - потенциальное удаление теневых копий",
+                "vssadmin.exe detected - potential shadow copy removal",
                 'CRITICAL',
                 'RANSOMWARE_BEHAVIOR'
             )
@@ -391,7 +391,7 @@ class RansomwareDetector(LoggerMixin):
             if len(write_ops) > self.file_io_threshold:
                 self._trigger_ransomware_alert(
                     pid, name, exe_path,
-                    f"Массовая запись файлов: {len(write_ops)} операций за минуту",
+                    f"Mass file writes: {len(write_ops)} operations per minute",
                     'HIGH',
                     'MASS_FILE_OPERATIONS'
                 )
@@ -401,7 +401,7 @@ class RansomwareDetector(LoggerMixin):
             if len(extensions) > self.unique_extensions_threshold:
                 self._trigger_ransomware_alert(
                     pid, name, exe_path,
-                    f"Доступ к множеству типов файлов: {len(extensions)} расширений",
+                    f"Access to many file types: {len(extensions)} extensions",
                     'MEDIUM',
                     'MULTIPLE_FILE_TYPES'
                 )
@@ -411,7 +411,7 @@ class RansomwareDetector(LoggerMixin):
                 if ext in self.file_extension_blacklist:
                     self._trigger_ransomware_alert(
                         pid, name, exe_path,
-                        f"Доступ к файлам с подозрительным расширением: {ext}",
+                        f"Access to files with suspicious extension: {ext}",
                         'HIGH',
                         'BLACKLISTED_EXTENSION'
                     )
@@ -648,10 +648,11 @@ def main():
         monitor = ProcessMonitor(args.config, args.db)
         monitor.monitor()
     except KeyboardInterrupt:
-        print("\nMonitoring stopped by user")
+        RansomwareLogger.log_operation('Monitoring stopped by user', True)
     except Exception as e:
         RansomwareLogger.log_error(e, "Process monitoring error")
-        print(f"Error: {e}")
+        monitor_logger = RansomwareLogger.get_logger('ProcessMonitor')
+        monitor_logger.error("Error: %s", e)
 
 
 if __name__ == "__main__":

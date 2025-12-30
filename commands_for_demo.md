@@ -1,167 +1,167 @@
-# Команды для демонстрации работоспособности всех модулей системы защиты
+# Commands to Demonstrate All Protection System Modules
 
-## 🎯 Основные команды для тестирования системы
+## 🎯 Basic Commands for Testing the System
 
-### 1. Запуск полной демонстрации всех модулей
+### 1. Run the full demonstration of all modules
 ```bash
 cd /home/userss/Downloads/Software-Firewall-Prototype
-python3 demo_all_modules.py
+python3 demos/demo_runner.py
 ```
 
-**Результат:** Автоматическое тестирование всех 7 основных модулей с отчетом о результатах
+**Result:** Automatic test of the main modules with a summary report
 
-### 2. Интерактивное тестирование межсетевого экрана
+### 2. Interactive firewall testing
 ```bash
 cd /home/userss/Downloads/Software-Firewall-Prototype
 python3 firewall.py interactive
 ```
 
-**Доступные пункты меню:**
-- `1` - Запустить все модули
-- `2` - Запустить гибридный сетевой сниффер  
-- `3` - Запустить модуль FIM
-- `4` - Запустить модуль мониторинга процессов
-- `5` - Запустить модуль сетевого мониторинга
-- `6` - Запустить систему защиты от ransomware
-- `7` - Просмотр логов
-- `8` - Перезагрузка правил
-- `9` - Сканирование сетевых угроз
-- `10` - Создание базовой линии
-- `11` - Сравнение с базовой линией
-- `12` - Ручное YARA сканирование
-- `13` - Просмотр YARA правил
-- `14` - PE анализ файла
-- `15` - Просмотр PE отчетов
-- `0` - Выход
+**Menu options:**
+- `1` - Start all modules
+- `2` - Start the hybrid network sniffer
+- `3` - Start the FIM module
+- `4` - Start the process monitoring module
+- `5` - Start the network monitoring module
+- `6` - Start the ransomware protection system
+- `7` - View logs
+- `8` - Reload rules
+- `9` - Scan network threats
+- `10` - Create baseline
+- `11` - Compare to baseline
+- `12` - Manual YARA scan
+- `13` - List YARA rules
+- `14` - PE file analysis
+- `15` - View PE reports
+- `0` - Exit
 
-### 3. Тестирование системы защиты от ransomware
+### 3. Test the ransomware protection system
 ```bash
 cd /home/userss/Downloads/Software-Firewall-Prototype
 python3 ransomware_protection_system.py start
 ```
 
-**Для остановки:** Нажмите `Ctrl+C`
+**To stop:** Press `Ctrl+C`
 
-### 4. Создание тестовых файлов для демонстрации
+### 4. Create test files for demonstration
 ```bash
 cd /home/userss/Downloads/Software-Firewall-Prototype
 python3 ransomware_protection_system.py test --dir ./test_files_demo
 ```
 
-### 5. Просмотр статистики событий
+### 5. View event statistics
 ```bash
-# Просмотр событий FIM
+# View FIM events
 python3 firewall.py logs --table fim_events --limit 10
 
-# Просмотр событий процессов  
+# View process events
 python3 firewall.py logs --table process_events --limit 10
 
-# Просмотр событий сетевой безопасности
+# View network security alerts
 python3 firewall.py logs --table netsec_alerts --limit 10
 
-# Просмотр событий YARA
+# View YARA events
 python3 firewall.py logs --table yara_events --limit 10
 ```
 
-### 6. Ручное сканирование файлов
+### 6. Manual file scans
 ```bash
-# YARA сканирование
+# YARA scan
 python3 firewall.py scan --path /etc/passwd
 
-# PE анализ файла
+# PE analysis
 python3 firewall.py pe-analyze --path /bin/ls
 
-# Просмотр PE отчетов
+# View PE reports
 python3 firewall.py pe-reports --limit 5
 ```
 
-### 7. Проверка конфигурации и правил
+### 7. Check configuration and rules
 ```bash
-# Просмотр загруженных YARA правил
+# List loaded YARA rules
 python3 firewall.py rules
 
-# Перезагрузка конфигурации
+# Reload configuration
 python3 firewall.py reload
 ```
 
-## 🔍 Отображение модулей согласно техническому заданию
+## 🔍 Module Overview (based on the specification)
 
-### Интеграционные модули:
+### Integration modules:
 ```bash
-# Модуль интеграции и автоматического реагирования
+# Integration and auto-response module
 python3 ransomware_protection_system.py start &
 
-# Интеграция Firewall с FIM
+# Firewall <-> FIM integration
 python3 firewall.py interactive
-# Выберите пункт 1 (Запустить все модули)
+# Choose option 1 (Start all modules)
 
-# Интеграция Firewall с мониторингом процессов  
+# Firewall <-> Process monitor integration
 python3 firewall.py interactive
-# Выберите пункт 1 (Запустить все модули)
+# Choose option 1 (Start all modules)
 ```
 
-### Специализированные модули:
+### Specialized modules:
 ```bash
-# YARA-сканер с управлением правилами
+# YARA scanner and rule management
 python3 firewall.py rules
 python3 firewall.py scan --path ./test_files_demo
 
-# Анализ PE-файлов с выявлением аномалий
+# PE static analysis and anomaly detection
 python3 firewall.py pe-analyze --path /bin/bash
 python3 firewall.py pe-reports --limit 10
 ```
 
-### Мониторинговые модули:
+### Monitoring modules:
 ```bash
-# FIM мониторинг
+# FIM monitoring
 python3 firewall.py interactive
-# Выберите пункт 3 (Запустить модуль FIM)
+# Choose option 3 (Start FIM)
 
-# Мониторинг процессов
+# Process monitoring
 python3 firewall.py interactive  
-# Выберите пункт 4 (Запустить модуль мониторинга процессов)
+# Choose option 4 (Start process monitoring)
 
-# Сетевой мониторинг
+# Network monitoring
 python3 firewall.py interactive
-# Выберите пункт 5 (Запустить модуль сетевого мониторинга)
+# Choose option 5 (Start network monitoring)
 ```
 
-## 📊 Краткий отчет о функциональности
+## 📊 Quick Functionality Summary
 
-**Работающие модули (из демонстрации):**
-- ✅ **Firewall Module** - Центральная система управления
-- ✅ **YARA Scanner Module** - Сигнатурное обнаружение угроз
-- ✅ **PE Analyzer Module** - Статический анализ исполняемых файлов  
-- ✅ **Anomaly Detection Module** - Выявление аномалий в PE-файлах
-- ✅ **Integration System** - Система интеграции и корреляции событий
+**Working modules (from the demo):**
+- ✅ **Firewall Module** - Central management system
+- ✅ **YARA Scanner Module** - Signature-based detection
+- ✅ **PE Analyzer Module** - Static analysis of executables
+- ✅ **Anomaly Detection Module** - PE anomaly detection
+- ✅ **Integration System** - Event correlation and response
 
-**Требуют доработки:**
-- ⚠️ **FIM Module** - Модуль контроля целостности файлов
-- ⚠️ **Process Monitor Module** - Модуль мониторинга процессов
+**Needs improvement:**
+- ⚠️ **FIM Module** - File integrity monitoring
+- ⚠️ **Process Monitor Module** - Process monitoring
 
-## 🎯 Команды для получения логов системы
+## 🎯 Log Commands
 ```bash
-# Просмотр логов в реальном времени
+# View logs in real time
 tail -f ransomware_protection.log
 
-# Просмотр последних 50 строк логов
+# Show the last 50 lines of logs
 tail -50 ransomware_protection.log
 
-# Поиск ошибок в логах
+# Search for errors in logs
 grep -i error ransomware_protection.log
 ```
 
-## 🚀 Быстрая демонстрация (рекомендуемая последовательность)
+## 🚀 Quick Demo (recommended sequence)
 ```bash
-# 1. Запуск полной демонстрации
-python3 demo_all_modules.py
+# 1. Run the full demo
+python3 demos/demo_runner.py
 
-# 2. Интерактивное тестирование  
+# 2. Interactive testing  
 python3 firewall.py interactive
-# Выберите пункты: 6, 12, 14, 15
+# Choose: 6, 12, 14, 15
 
-# 3. Проверка логов
+# 3. Check logs
 python3 firewall.py logs --table netsec_alerts --limit 5
 ```
 
-**Общий результат демонстрации:** 5 из 7 модулей работают корректно (71.4% успешности)
+**Demo result summary:** 5 out of 7 modules functioning correctly (71.4% success rate)

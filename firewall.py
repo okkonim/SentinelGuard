@@ -7,12 +7,10 @@ import os
 import sys
 from datetime import datetime
 
-# Импорт утилит
 from utils.logging_utils import RansomwareLogger
 from utils.exceptions import RansomwareProtectionError, ConfigurationError
 from utils.constants import *
 
-# Импорт модулей базы данных и мониторинга
 from database import Database
 from network_capture import NetworkCapture
 from fim import FIM
@@ -22,7 +20,6 @@ from network_sniffer import NetworkSniffer
 from yara_scanner import YARAScanner
 from pe_analyzer import PEAnalyzer
 
-# Импорт системы защиты от ransomware
 from ransomware_protection_system import SystemManager
 
 class Firewall:
@@ -119,7 +116,7 @@ class Firewall:
             with open(self.config_path, 'r') as f:
                 config = json.load(f)
             
-            # Настройка логирования (инициализируем только если не уже настроено)
+            # Logging configuration
             if not hasattr(self, '_config_loaded'):
                 log_config = {
                     'level': config.get('logging', {}).get('level', LOG_LEVEL_DEFAULT),
@@ -132,89 +129,88 @@ class Firewall:
                 RansomwareLogger()._configure_logging(log_config)
                 self._config_loaded = True
             
-            # Сохраняем конфигурацию для ленивой инициализации
             self._config = config
                 
-            self.logger.info("Конфигурация успешно загружена")
+            self.logger.info("Configuration loaded successfully")
             
         except FileNotFoundError:
-            self.logger.error(f"Файл конфигурации {self.config_path} не найден")
-            raise ConfigurationError(f"Конфигурационный файл не найден: {self.config_path}")
+            self.logger.error(f"Configuration file {self.config_path} not found")
+            raise ConfigurationError(f"Configuration file not found: {self.config_path}")
         except json.JSONDecodeError as e:
-            self.logger.error(f"Ошибка декодирования JSON в файле конфигурации: {e}")
-            raise ConfigurationError(f"Неверный формат JSON в файле конфигурации: {e}")
+            self.logger.error(f"JSON decode error in configuration file: {e}")
+            raise ConfigurationError(f"Invalid JSON format in configuration file: {e}")
         except Exception as e:
-            self.logger.error(f"Ошибка загрузки конфигурации: {e}")
-            raise RansomwareProtectionError(f"Не удалось загрузить конфигурацию: {e}")
+            self.logger.error(f"Configuration loading error: {e}")
+            raise RansomwareProtectionError(f"Failed to load configuration: {e}")
 
     def start(self):
-        self.logger.info("Запуск межсетевого экрана...")
-        print("Запуск прототипа межсетевого экрана...")
+        self.logger.info("Starting firewall...")
+        print("Starting firewall prototype...")
         
         try:
             self.running = True
             
-            # Запуск сетевого сниффера
+            # Turn on network capture
             if self.network_sniffer:  # Will trigger lazy initialization
                 t1 = threading.Thread(target=self.network_sniffer.start_sniffing, daemon=True)
                 t1.start()
                 self.threads.append(t1)
 
-            # Запуск FIM
+            # Turn on FIM
             if self.fim:  # Will trigger lazy initialization
                 t2 = threading.Thread(target=self.fim.monitor, daemon=True)
                 t2.start()
                 self.threads.append(t2)
 
-            # Запуск мониторинга процессов
+            # Turn on process monitor
             if self.process_monitor:  # Will trigger lazy initialization
                 t3 = threading.Thread(target=self.process_monitor.monitor, daemon=True)
                 t3.start()
                 self.threads.append(t3)
 
-            # Запуск непрерывного сетевого мониторинга
+            # Turn on network monitor
             t4 = threading.Thread(target=self._run_continuous_network_monitoring, daemon=True)
             t4.start()
             self.threads.append(t4)
 
-            print("Межсетевой экран запущен. Нажмите Ctrl+C для остановки.")
-            self.logger.info("Все модули межсетевого экрана запущены успешно")
+            print("Press Ctrl+C to stop.")
+            self.logger.info("All modules started. Firewall is running.")
             
             try:
                 while self.running:
                     time.sleep(1)
             except KeyboardInterrupt:
-                self.logger.info("Получен сигнал остановки от пользователя")
+                self.logger.info("KeyboardInterrupt received. Stopping firewall...")
                 self.stop()
                 
         except Exception as e:
-            self.logger.error(f"Ошибка при запуске межсетевого экрана: {e}")
-            raise RansomwareProtectionError(f"Не удалось запустить межсетевой экран: {e}")
+            self.logger.error(f"Error starting firewall: {e}")
+            raise RansomwareProtectionError(f"Failed to start firewall: {e}")
 
     def _run_continuous_network_monitoring(self):
-        """Непрерывный мониторинг сети"""
+        """Continuous network monitoring"""
         while self.running:
             try:
-                # Выполняем быстрое сканирование каждую минуту
+                # Perform quick scan every minute
                 connections = self.network_monitor.get_network_connections()
                 if connections:
                     patterns = self.network_monitor.analyze_traffic_patterns(connections)
                     if any(patterns.values()):
-                        self.logger.warning(f"Обнаружены подозрительные паттерны: {list(patterns.keys())}")
+                        self.logger.warning(f"Suspicious patterns detected: {list(patterns.keys())}")
                 
-                time.sleep(60)  # Проверка каждую минуту
+                time.sleep(60)  # Check every minute
             except Exception as e:
-                self.logger.error(f"Ошибка в непрерывном мониторинге: {e}")
-                time.sleep(30)  # При ошибке ждем 30 секунд
+                self.logger.error(f"Error in continuous monitoring: {e}")
+                time.sleep(30)  # Wait 30 seconds on error
 
     def stop(self):
-        self.logger.info("Остановка межсетевого экрана...")
-        print("Остановка межсетевого экрана...")
+        self.logger.info("Stopping firewall...")
+        print("Stopping firewall...")
         
         try:
             self.running = False
             
-            # Останавливаем модули
+            # Stop modules
             if hasattr(self, '_network_sniffer') and self._network_sniffer:
                 self.network_sniffer.stop_sniffing()
                 
@@ -225,24 +221,24 @@ class Firewall:
                 self.process_monitor.stop()
                 
             if hasattr(self, 'network_monitor') and self.network_monitor:
-                # Сетевой мониторинг останавливается сам через running flag
+                # Network monitoring stops itself via running flag
                 pass
             
-            # Ждем завершения потоков с таймаутом
+            # Wait for threads to complete with timeout
             for t in self.threads:
                 if t.is_alive():
                     t.join(timeout=5)
             
-            # Закрываем базу данных
+            # Close database
             if hasattr(self, 'db') and self.db:
                 self.db.close()
                 
-            self.logger.info("Межсетевой экран успешно остановлен")
-            print("Межсетевой экран остановлен.")
+            self.logger.info("Firewall stopped successfully")
+            print("Firewall stopped.")
             
         except Exception as e:
-            self.logger.error(f"Ошибка при остановке межсетевого экрана: {e}")
-            raise RansomwareProtectionError(f"Не удалось корректно остановить межсетевой экран: {e}")
+            self.logger.error(f"Error stopping firewall: {e}")
+            raise RansomwareProtectionError(f"Failed to stop firewall correctly: {e}")
 
     def view_logs(self, table, limit=10):
         events = self.db.query_events(table, limit)
@@ -316,27 +312,27 @@ class Firewall:
                 if any(section['anomalies'] for section in result['sections']):
                     high_entropy_sections = [s['name'] for s in result['sections'] if 'high_entropy' in s['anomalies']]
                     if high_entropy_sections:
-                        reasons.append(f"высокая энтропия в секциях: {', '.join(high_entropy_sections)}")
+                        reasons.append(f"high entropy in sections: {', '.join(high_entropy_sections)}")
                     suspicious_names = [s['name'] for s in result['sections'] if 'suspicious_name' in s['anomalies']]
                     if suspicious_names:
-                        reasons.append(f"подозрительные имена секций: {', '.join(suspicious_names)}")
+                        reasons.append(f"suspicious section names: {', '.join(suspicious_names)}")
                 if suspicious_imports:
-                    reasons.append(f"подозрительные импорты: {', '.join([imp['function'] for imp in suspicious_imports])}")
-                threat_reasons.append(f"Модуль PE: {', '.join(reasons)}")
+                    reasons.append(f"suspicious imports: {', '.join([imp['function'] for imp in suspicious_imports])}")
+                threat_reasons.append(f"PE Module: {', '.join(reasons)}")
 
             if yara_matches and not pe_suspicious:
                 yara_rules = [r['rule_name'] for r in yara_results]
-                threat_reasons.append(f"Модуль YARA (неизвестная угроза): правила {', '.join(yara_rules)}")
+                threat_reasons.append(f"YARA Module (unknown threat): rules {', '.join(yara_rules)}")
             elif yara_matches and pe_suspicious:
                 yara_rules = [r['rule_name'] for r in yara_results]
-                threat_reasons.append(f"Модуль YARA: правила {', '.join(yara_rules)}")
+                threat_reasons.append(f"YARA Module: rules {', '.join(yara_rules)}")
 
             if threat_reasons:
-                print(f"  Статус: ПОДОЗРИТЕЛЬНЫЙ")
+                print(f"  Status: SUSPICIOUS")
                 for reason in threat_reasons:
                     print(f"    - {reason}")
             else:
-                print(f"  Статус: ЧИСТ")
+                print(f"  Status: CLEAN")
         else:
             print("PE analysis failed")
 
@@ -388,28 +384,28 @@ class Firewall:
         print("Configuration reloaded")
 
     def run_netsec_scan(self):
-        """Запуск сканирования сетевого мониторинга"""
-        print("Запуск сканирования сетевого мониторинга...")
+        """Run network monitoring scan"""
+        print("Running network monitoring scan...")
         results = self.network_monitor.run_comprehensive_scan()
-        print("Сканирование сетевого мониторинга завершено.")
+        print("Network monitoring scan completed.")
         return results
 
     def create_baseline(self):
-        """Создание базовой линии сети"""
-        print("Создание базовой линии сети...")
+        """Create network baseline"""
+        print("Creating network baseline...")
         self.network_monitor.generate_baseline()
-        print("Базовая линия создана.")
+        print("Baseline created.")
 
     def compare_baseline(self):
-        """Сравнение с базовой линией"""
-        print("Сравнение с базовой линией...")
+        """Compare with baseline"""
+        print("Comparing with baseline...")
         anomalies = self.network_monitor.compare_with_baseline()
         if anomalies:
-            print("Найдены аномалии:")
+            print("Anomalies found:")
             for anomaly in anomalies:
                 print(f"  {anomaly.get('type', 'Unknown')}: {anomaly.get('description', 'No description')}")
         else:
-            print("Аномалий не найдено.")
+            print("No anomalies found.")
         return anomalies
 
     def reload_rules(self):
@@ -417,22 +413,22 @@ class Firewall:
         self.reload_config()
 
     def start_network_sniffer_only(self):
-        print("Запуск гибридного сетевого сниффера...")
+        print("Starting hybrid network sniffer...")
         if self.network_sniffer.start_sniffing():
-            print("Гибридный сетевой сниффер запущен. Нажмите Ctrl+C для остановки.")
+            print("Hybrid network sniffer started. Press Ctrl+C to stop.")
             try:
                 input()
             except KeyboardInterrupt:
                 pass
             self.network_sniffer.stop_sniffing()
         self.db.close()
-        print("Гибридный сетевой сниффер остановлен.")
+        print("Hybrid network sniffer stopped.")
 
     def start_fim_only(self):
-        print("Запуск модуля FIM...")
+        print("Starting FIM module...")
         t = threading.Thread(target=self.fim.monitor)
         t.start()
-        print("Модуль FIM запущен. Нажмите Ctrl+C для остановки.")
+        print("FIM module started. Press Ctrl+C to stop.")
         try:
             input()
         except KeyboardInterrupt:
@@ -440,13 +436,13 @@ class Firewall:
         self.fim.stop()
         t.join()
         self.db.close()
-        print("Модуль FIM остановлен.")
+        print("FIM module stopped.")
 
     def start_process_only(self):
-        print("Запуск модуля мониторинга процессов...")
+        print("Starting process monitoring module...")
         t = threading.Thread(target=self.process_monitor.monitor)
         t.start()
-        print("Модуль мониторинга процессов запущен. Нажмите Ctrl+C для остановки.")
+        print("Process monitoring module started. Press Ctrl+C to stop.")
         try:
             input()
         except KeyboardInterrupt:
@@ -454,13 +450,13 @@ class Firewall:
         self.process_monitor.stop()
         t.join()
         self.db.close()
-        print("Модуль мониторинга процессов остановлен.")
+        print("Process monitoring module stopped.")
 
     def start_netsec_only(self):
-        print("Запуск модуля NetSec Sentinel...")
+        print("Starting NetSec Sentinel module...")
         t = threading.Thread(target=self.network_monitor.start_monitoring)
         t.start()
-        print("Модуль NetSec Sentinel запущен. Нажмите Ctrl+C для остановки.")
+        print("NetSec Sentinel module started. Press Ctrl+C to stop.")
         try:
             input()
         except KeyboardInterrupt:
@@ -468,28 +464,28 @@ class Firewall:
         self.network_monitor.stop_monitoring()
         t.join()
         self.db.close()
-        print("Модуль NetSec Sentinel остановлен.")
+        print("NetSec Sentinel module stopped.")
 
 def interactive_menu(firewall):
     while True:
-        print("\n=== Прототип программного межсетевого экрана ===")
-        print("1. Запустить все модули")
-        print("2. Запустить гибридный сетевой сниффер")
-        print("3. Запустить модуль FIM")
-        print("4. Запустить модуль мониторинга процессов")
-        print("5. Запустить модуль сетевого мониторинга")
-        print("6. Запустить систему защиты от ransomware")
-        print("7. Просмотр логов")
-        print("8. Перезагрузка правил")
-        print("9. Сканирование сетевых угроз")
-        print("10. Создание базовой линии")
-        print("11. Сравнение с базовой линией")
-        print("12. Ручное YARA сканирование")
-        print("13. Просмотр YARA правил")
-        print("14. PE анализ файла")
-        print("15. Просмотр PE отчетов")
-        print("0. Выход")
-        choice = input("Выберите опцию (0-15): ").strip()
+        print("\n=== Software Firewall Prototype ===")
+        print("1. Start all modules")
+        print("2. Start hybrid network sniffer")
+        print("3. Start FIM module")
+        print("4. Start process monitoring module")
+        print("5. Start network monitoring module")
+        print("6. Start ransomware protection system")
+        print("7. View logs")
+        print("8. Reload rules")
+        print("9. Network threat scan")
+        print("10. Create baseline")
+        print("11. Compare with baseline")
+        print("12. Manual YARA scan")
+        print("13. View YARA rules")
+        print("14. PE file analysis")
+        print("15. View PE reports")
+        print("0. Exit")
+        choice = input("Select option (0-15): ").strip()
 
         if choice == '1':
             firewall.start()
@@ -502,30 +498,30 @@ def interactive_menu(firewall):
         elif choice == '5':
             firewall.start_netsec_only()
         elif choice == '6':
-            print("Запуск системы защиты от ransomware...")
+            print("Starting ransomware protection system...")
             protection_system = firewall.ransomware_protection  # Triggers lazy initialization
             
-            # Запускаем систему защиты
+            # Start protection system
             if protection_system.start_protection():
-                print("Система защиты от ransomware запущена. Нажмите Ctrl+C для остановки...")
+                print("Ransomware protection system started. Press Ctrl+C to stop...")
                 try:
                     while protection_system.running:
                         time.sleep(1)
                 except KeyboardInterrupt:
                     protection_system.stop_protection()
             else:
-                print("Ошибка запуска системы защиты от ransomware.")
+                print("Error starting ransomware protection system.")
         elif choice == '7':
-            table = input("Таблица (network_events, fim_events, process_events, netsec_alerts, yara_events): ").strip()
+            table = input("Table (network_events, fim_events, process_events, netsec_alerts, yara_events): ").strip()
             if table in ['network_events', 'fim_events', 'process_events', 'netsec_alerts', 'yara_events']:
-                limit = input("Количество записей (по умолчанию 10): ").strip()
+                limit = input("Number of records (default 10): ").strip()
                 limit = int(limit) if limit.isdigit() else 10
                 firewall.view_logs(table, limit)
             else:
-                print("Неверная таблица.")
+                print("Invalid table.")
         elif choice == '8':
             firewall.reload_rules()
-            print("Правила перезагружены.")
+            print("Rules reloaded.")
         elif choice == '9':
             firewall.run_netsec_scan()
         elif choice == '10':
@@ -533,35 +529,35 @@ def interactive_menu(firewall):
         elif choice == '11':
             firewall.compare_baseline()
         elif choice == '12':
-            path = input("Путь к файлу или директории для сканирования: ").strip()
+            path = input("Path to file or directory for scanning: ").strip()
             if path:
                 firewall.manual_scan(path)
             else:
-                print("Путь не указан.")
+                print("Path not specified.")
         elif choice == '13':
             firewall.view_yara_rules()
         elif choice == '14':
-            path = input("Путь к PE файлу для анализа: ").strip()
+            path = input("Path to PE file for analysis: ").strip()
             if path:
                 firewall.manual_pe_analysis(path)
             else:
-                print("Путь не указан.")
+                print("Path not specified.")
         elif choice == '15':
-            limit = input("Количество записей (по умолчанию 10): ").strip()
+            limit = input("Number of records (default 10): ").strip()
             limit = int(limit) if limit.isdigit() else 10
             firewall.view_pe_reports(limit)
         elif choice == '0':
-            print("Выход.")
+            print("Exiting.")
             break
         else:
-            print("Неверный выбор. Попробуйте снова.")
+            print("Invalid choice. Please try again.")
 
 def main():
-    parser = argparse.ArgumentParser(description="Гибридная система обнаружения угроз")
-    parser.add_argument('command', nargs='?', choices=['start', 'stop', 'logs', 'reload', 'netsec-scan', 'baseline', 'compare', 'start-sniffer', 'start-fim', 'start-process', 'start-netsec', 'start-ransomware', 'interactive', 'scan', 'rules', 'pe-analyze', 'pe-reports'], help="Команда для выполнения")
-    parser.add_argument('--table', choices=['network_events', 'fim_events', 'process_events', 'netsec_alerts', 'yara_events', 'ransomware_attacks'], help="Таблица для просмотра логов")
-    parser.add_argument('--limit', type=int, default=10, help="Количество записей логов для отображения")
-    parser.add_argument('--path', help="Путь для сканирования (для команды scan)")
+    parser = argparse.ArgumentParser(description="Hybrid threat detection system")
+    parser.add_argument('command', nargs='?', choices=['start', 'stop', 'logs', 'reload', 'netsec-scan', 'baseline', 'compare', 'start-sniffer', 'start-fim', 'start-process', 'start-netsec', 'start-ransomware', 'interactive', 'scan', 'rules', 'pe-analyze', 'pe-reports'], help="Command to execute")
+    parser.add_argument('--table', choices=['network_events', 'fim_events', 'process_events', 'netsec_alerts', 'yara_events', 'ransomware_attacks'], help="Table for viewing logs")
+    parser.add_argument('--limit', type=int, default=10, help="Number of log records to display")
+    parser.add_argument('--path', help="Path for scanning (for scan command)")
 
     args = parser.parse_args()
 
@@ -576,7 +572,7 @@ def main():
             firewall.stop()
     elif args.command == 'logs':
         if not args.table:
-            print("Пожалуйста, укажите --table")
+            print("Please specify --table")
             return
         firewall.view_logs(args.table, args.limit)
     elif args.command == 'reload':
@@ -599,14 +595,14 @@ def main():
         interactive_menu(firewall)
     elif args.command == 'scan':
         if not args.path:
-            print("Пожалуйста, укажите --path для сканирования")
+            print("Please specify --path for scanning")
             return
         firewall.manual_scan(args.path)
     elif args.command == 'rules':
         firewall.view_yara_rules()
     elif args.command == 'pe-analyze':
         if not args.path:
-            print("Пожалуйста, укажите --path для PE анализа")
+            print("Please specify --path for PE analysis")
             return
         firewall.manual_pe_analysis(args.path)
     elif args.command == 'pe-reports':
@@ -614,7 +610,8 @@ def main():
     elif args.command == 'stop':
         firewall.stop()
     else:
-        print("Неверная команда")
+        print("Invalid command")
 
 if __name__ == "__main__":
     main()
+

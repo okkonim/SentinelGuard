@@ -132,18 +132,18 @@ SEVERITY_COLORS = {
 }
 
 # System status
-SYSTEM_RUNNING = 'РАБОТАЕТ'
-SYSTEM_STOPPED = 'ОСТАНОВЕН'
-SYSTEM_ERROR = 'ОШИБКА'
+SYSTEM_RUNNING = 'RUNNING'
+SYSTEM_STOPPED = 'STOPPED'
+SYSTEM_ERROR = 'ERROR'
 
 # Module names (for display)
 MODULE_NAMES = {
-    'crypto': 'Криптография',
-    'fim': 'Контроль целостности файлов (FIM)',
-    'process_monitor': 'Мониторинг процессов',
-    'network_sniffer': 'Сетевой анализ',
-    'pe_analyzer': 'Анализ PE-файлов',
-    'yara_scanner': 'YARA-сканер'
+    'crypto': 'Cryptography',
+    'fim': 'File Integrity Monitoring (FIM)',
+    'process_monitor': 'Process monitoring',
+    'network_sniffer': 'Network analysis',
+    'pe_analyzer': 'PE file analysis',
+    'yara_scanner': 'YARA scanner'
 }
 
 # Logging levels
