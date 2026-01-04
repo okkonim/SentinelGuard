@@ -284,9 +284,24 @@ class FileEventHandler:
         self.threat_analyzer = threat_analyzer
         self.logger = logger
 
+        # Deduplication of rapid repeated events: (file_path,event_type) -> timestamp
+        self._recent_events = {}
+        self._recent_event_threshold = 1.0  # seconds
+
     def handle_file_change(self, file_path: str, event_type: str, criticality: str) -> None:
         """Handle file change event."""
         try:
+            now = datetime.now().timestamp()
+            key = (file_path, event_type)
+            last = self._recent_events.get(key)
+            if last and (now - last) < self._recent_event_threshold:
+                # Duplicate rapid event - ignore
+                self.logger.debug(f"Ignoring duplicate FIM event for {file_path} ({event_type})")
+                return
+
+            # Record event timestamp
+            self._recent_events[key] = now
+
             # Log FIM event
             self.db.insert_fim_event(file_path, event_type, criticality)
             RansomwareLogger.log_security_event(

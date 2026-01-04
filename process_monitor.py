@@ -39,6 +39,10 @@ class ProcessWatcher(LoggerMixin):
         # Process tracking
         self.prev_procs: Dict[int, Tuple[str, str, int]] = {}
         
+        # Recently seen events to prevent duplicates (pid, event_type) -> timestamp
+        self._recent_events: Dict[Tuple[int, str], float] = {}
+        self._recent_event_threshold = 2.0  # seconds
+        
         # Configuration
         self.network_threshold = 1000000
         self._load_configuration()
@@ -172,6 +176,17 @@ class ProcessWatcher(LoggerMixin):
     def _handle_process_started(self, pid: int, name: str, exe_path: str, network_bytes: int) -> None:
         """Handle process started event."""
         try:
+            now = time.time()
+            key = (pid, 'process_started')
+            last = self._recent_events.get(key)
+            if last and (now - last) < self._recent_event_threshold:
+                # Duplicate event detected within threshold; ignore
+                self.logger.debug(f"Ignoring duplicate process_started for PID {pid}")
+                return
+
+            # Record event timestamp
+            self._recent_events[key] = now
+
             self.db.insert_process_event(pid, name, 'process_started', 'INFO')
             RansomwareLogger.log_security_event(
                 'PROCESS_STARTED',
@@ -184,6 +199,17 @@ class ProcessWatcher(LoggerMixin):
     def _handle_process_terminated(self, pid: int, name: str, exe_path: str) -> None:
         """Handle process terminated event."""
         try:
+            now = time.time()
+            key = (pid, 'process_terminated')
+            last = self._recent_events.get(key)
+            if last and (now - last) < self._recent_event_threshold:
+                # Duplicate event detected within threshold; ignore
+                self.logger.debug(f"Ignoring duplicate process_terminated for PID {pid}")
+                return
+
+            # Record event timestamp
+            self._recent_events[key] = now
+
             self.db.insert_process_event(pid, name, 'process_terminated', 'WARNING')
             RansomwareLogger.log_security_event(
                 'PROCESS_TERMINATED',

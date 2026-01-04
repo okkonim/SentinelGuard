@@ -58,7 +58,37 @@ This README documents the exact behavior implemented in the codebase, CLI usage,
 ---
 
 ## CLI reference (exact commands and behavior)
-Primary entry: `python3 ransomware_protection_system.py --config config.json --db firewall.db <command>`
+Primary entry: `python3 firewall.py <command>` (run `python3 firewall.py --help` for full usage). `ransomware_protection_system.py` is deprecated and will delegate to `firewall.py` when executed.
+
+To view the CLI help and available commands, run:
+
+```bash
+python3 firewall.py --help
+```
+
+Example output (trimmed):
+
+```
+usage: firewall.py [-h] [--config CONFIG] [--db DB] [--version]
+                   {start,stop,logs,reload,netsec-scan,baseline,compare,start-sniffer,start-fim,start-process,start-netsec,start-ransomware,interactive,scan,rules,pe-analyze,pe-reports}
+
+Firewall / SentinelGuard command-line interface (primary project entry)
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --config CONFIG, -c CONFIG
+                        Path to configuration file (default: config.json)
+  --db DB, -d DB        Database file (default: firewall.db)
+  --version             show program's version number and exit
+
+Commands:
+  start                 Start protection system
+  stop                  Stop protection system
+  logs                  View logged events
+  ... (other commands)
+```
+
+This is the recommended way to start and control the system.
 
 Available subcommands (implemented exactly as shown in `CLIHandler`):
 - `start` — starts the protection system via `SystemManager.start_protection()` (spawns threads for modules and the correlation engine).
@@ -87,9 +117,10 @@ Wrapper coordinator (`firewall.py`):
 ---
 
 ## Known caveats & recommended fixes (practical)
-- Some user-facing strings and test file contents are still in Russian (e.g., `create_test_files()` writes Russian text). The system logic is correct; texts need localization for consistent English UX.
+- Some user-facing strings and test file contents were in Russian; these have been translated in the README but code-level localization remains (e.g., `create_test_files()` may still produce Russian strings). The system logic is correct; full localization is recommended for consistent English UX.
 - `NetworkSniffer` default interface is `ens33` — update the `config.json` or `NetworkSniffer` initialization if your environment uses `eth0`, `wlp3s0`, etc.
 - `network_sniffer` does not always provide a `stop()` method; stopping relies on the thread ending naturally — consider adding a controlled shutdown method for immediate stops.
+- Duplicate event logging: the system previously could produce duplicate log entries when modules were started independently; recent changes centralize startup via `firewall.py` (SystemManager) and add short-window deduplication for rapid identical events (FIM and process events) and logging configuration now prevents handler propagation duplication.
 
 ---
 

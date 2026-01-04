@@ -146,43 +146,57 @@ class Firewall:
     def start(self):
         self.logger.info("Starting firewall...")
         print("Starting firewall prototype...")
-        
+
         try:
             self.running = True
-            
-            # Turn on network capture
-            if self.network_sniffer:  # Will trigger lazy initialization
-                t1 = threading.Thread(target=self.network_sniffer.start_sniffing, daemon=True)
-                t1.start()
-                self.threads.append(t1)
 
-            # Turn on FIM
-            if self.fim:  # Will trigger lazy initialization
-                t2 = threading.Thread(target=self.fim.monitor, daemon=True)
-                t2.start()
-                self.threads.append(t2)
+            # Prefer the central SystemManager to orchestrate modules to avoid duplicate starts
+            if self.ransomware_protection:
+                started = self.ransomware_protection.start_protection()
+                if not started:
+                    self.logger.error("SystemManager failed to start protection")
+                    raise RansomwareProtectionError("Failed to start protection system via SystemManager")
 
-            # Turn on process monitor
-            if self.process_monitor:  # Will trigger lazy initialization
-                t3 = threading.Thread(target=self.process_monitor.monitor, daemon=True)
-                t3.start()
-                self.threads.append(t3)
+                print("Protection system started via SystemManager. Press Ctrl+C to stop.")
+                self.logger.info("Protection system started via SystemManager.")
 
-            # Turn on network monitor
-            t4 = threading.Thread(target=self._run_continuous_network_monitoring, daemon=True)
-            t4.start()
-            self.threads.append(t4)
+                try:
+                    while self.ransomware_protection.running:
+                        time.sleep(1)
+                except KeyboardInterrupt:
+                    self.logger.info("KeyboardInterrupt received. Stopping firewall...")
+                    self.stop()
+            else:
+                # Fallback: start modules individually if SystemManager is unavailable
+                if self.network_sniffer:  # Will trigger lazy initialization
+                    t1 = threading.Thread(target=self.network_sniffer.start_sniffing, daemon=True)
+                    t1.start()
+                    self.threads.append(t1)
 
-            print("Press Ctrl+C to stop.")
-            self.logger.info("All modules started. Firewall is running.")
-            
-            try:
-                while self.running:
-                    time.sleep(1)
-            except KeyboardInterrupt:
-                self.logger.info("KeyboardInterrupt received. Stopping firewall...")
-                self.stop()
-                
+                if self.fim:  # Will trigger lazy initialization
+                    t2 = threading.Thread(target=self.fim.monitor, daemon=True)
+                    t2.start()
+                    self.threads.append(t2)
+
+                if self.process_monitor:  # Will trigger lazy initialization
+                    t3 = threading.Thread(target=self.process_monitor.monitor, daemon=True)
+                    t3.start()
+                    self.threads.append(t3)
+
+                t4 = threading.Thread(target=self._run_continuous_network_monitoring, daemon=True)
+                t4.start()
+                self.threads.append(t4)
+
+                print("Press Ctrl+C to stop.")
+                self.logger.info("All modules started. Firewall is running.")
+
+                try:
+                    while self.running:
+                        time.sleep(1)
+                except KeyboardInterrupt:
+                    self.logger.info("KeyboardInterrupt received. Stopping firewall...")
+                    self.stop()
+
         except Exception as e:
             self.logger.error(f"Error starting firewall: {e}")
             raise RansomwareProtectionError(f"Failed to start firewall: {e}")
@@ -209,33 +223,40 @@ class Firewall:
         
         try:
             self.running = False
-            
-            # Stop modules
+
+            # Prefer central shutdown via SystemManager if available
+            if self.ransomware_protection:
+                try:
+                    self.ransomware_protection.stop_protection()
+                except Exception as e:
+                    self.logger.error(f"Error stopping SystemManager: {e}")
+
+            # Fallback: stop individual modules
             if hasattr(self, '_network_sniffer') and self._network_sniffer:
                 self.network_sniffer.stop_sniffing()
-                
+
             if hasattr(self, '_fim') and self._fim:
                 self.fim.stop()
-                
+
             if hasattr(self, '_process_monitor') and self._process_monitor:
                 self.process_monitor.stop()
-                
+
             if hasattr(self, 'network_monitor') and self.network_monitor:
                 # Network monitoring stops itself via running flag
                 pass
-            
+
             # Wait for threads to complete with timeout
             for t in self.threads:
                 if t.is_alive():
                     t.join(timeout=5)
-            
+
             # Close database
             if hasattr(self, 'db') and self.db:
                 self.db.close()
-                
+
             self.logger.info("Firewall stopped successfully")
             print("Firewall stopped.")
-            
+
         except Exception as e:
             self.logger.error(f"Error stopping firewall: {e}")
             raise RansomwareProtectionError(f"Failed to stop firewall correctly: {e}")
@@ -553,7 +574,16 @@ def interactive_menu(firewall):
             print("Invalid choice. Please try again.")
 
 def main():
-    parser = argparse.ArgumentParser(description="Hybrid threat detection system")
+    parser = argparse.ArgumentParser(
+        description="Firewall / SentinelGuard command-line interface (primary project entry)",
+        epilog="Usage examples:\n  python3 firewall.py start\n  python3 firewall.py logs --table fim_events --limit 20\n  python3 firewall.py scan --path /tmp/sample --limit 10\n\nTip: `ransomware_protection_system.py` is deprecated and will delegate to this CLI (it emits a DeprecationWarning).",
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+
+    parser.add_argument('--config', '-c', default='config.json', help='Path to configuration file (default: config.json)')
+    parser.add_argument('--db', '-d', default=DB_DEFAULT_NAME, help=f"Database file (default: {DB_DEFAULT_NAME})")
+    parser.add_argument('--version', action='version', version='SentinelGuard 0.1')
+
     parser.add_argument('command', nargs='?', choices=['start', 'stop', 'logs', 'reload', 'netsec-scan', 'baseline', 'compare', 'start-sniffer', 'start-fim', 'start-process', 'start-netsec', 'start-ransomware', 'interactive', 'scan', 'rules', 'pe-analyze', 'pe-reports'], help="Command to execute")
     parser.add_argument('--table', choices=['network_events', 'fim_events', 'process_events', 'netsec_alerts', 'yara_events', 'ransomware_attacks'], help="Table for viewing logs")
     parser.add_argument('--limit', type=int, default=10, help="Number of log records to display")

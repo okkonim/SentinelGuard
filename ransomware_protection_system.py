@@ -250,7 +250,7 @@ class StatusReporter(LoggerMixin):
 
     def _display_module_status(self) -> None:
         """Display status of all system modules."""
-        print("\nSystem modules:")}
+        print("\nSystem modules:")
         
         modules = self.config_manager.get_module_config()
         
@@ -578,7 +578,7 @@ class SystemManager(LoggerMixin):
             print("Protection system is not running")
             return
 
-        print("\nОстановка системы защиты...")
+        print("\nStopping the ransomware protection system...")
         self.running = False
 
         try:
@@ -661,7 +661,7 @@ class SystemManager(LoggerMixin):
             success = self.db.attempt_rollback(file_path, backup_path)
             
             if success:
-                print(f"✓ File rollback successful: {file_path} выполнен успешно")
+                print(f"✓ File rollback successful: {file_path}")
                 self.db.insert_fim_event(file_path, "File restored from backup", SEVERITY_INFO)
                 RansomwareLogger.log_operation(f'Rollback completed: {file_path}', True)
             else:
@@ -711,7 +711,7 @@ class SystemManager(LoggerMixin):
                 
                 print(f"  ✓ Created: {filename}")
             
-            print(f"✓ Создано {len(test_files)} тестовых файлов")
+            print(f"✓ Created {len(test_files)} test files")
             RansomwareLogger.log_operation(f'Test files created in {directory}', True)
             
         except Exception as e:
@@ -821,7 +821,7 @@ Usage examples:
             self._execute_command(parsed_args)
             
         except KeyboardInterrupt:
-            print("\nПрервано пользователем")
+            print("\nInterrupted by user")
             if self.system_manager.running:
                 self.system_manager.stop_protection()
         except Exception as e:
@@ -833,7 +833,7 @@ Usage examples:
         try:
             if args.command == 'start':
                 if self.system_manager.start_protection():
-                    print("\nСистема запущена. Нажмите Ctrl+C для остановки...")
+                    print("\nSystem started. Press Ctrl+C to stop...")
                     try:
                         while self.system_manager.running:
                             time.sleep(1)
@@ -903,4 +903,18 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    # Deprecated: delegate execution to firewall.py main entry point
+    try:
+        import warnings
+        warnings.warn("`ransomware_protection_system.py` is deprecated. Use `firewall.py` as the primary entry point.", DeprecationWarning)
+    except Exception:
+        pass
+
+    try:
+        from firewall import main as firewall_main
+        firewall_main()
+    except Exception as e:
+        # If delegation fails, fall back to the original main
+        import logging
+        logging.getLogger(__name__).exception("Delegation to firewall.main failed, falling back to ransomware_protection_system.main: %s", e)
+        main()

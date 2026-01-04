@@ -87,6 +87,9 @@ class RansomwareLogger:
             console_handler.setFormatter(formatter)
             main_logger.addHandler(console_handler)
 
+            # Prevent duplicate log propagation to root handlers
+            main_logger.propagate = False
+
             # Configure root logger only once
             root_logger = logging.getLogger()
             if not root_logger.handlers:
