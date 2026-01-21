@@ -132,16 +132,6 @@ Wrapper coordinator (`firewall.py`):
 
 ---
 
-## Renaming to SentinelGuard (optional)
-If you want the code and artifacts to consistently use `SentinelGuard`:
-- Replace user-facing banners and log messages containing "Ransomware Protection" with "SentinelGuard".
-- Optionally rename `ransomware_protection_system.py` to `sentinelguard.py` and update demos and docs to use that name.
-- Update shell scripts or service wrappers if present.
-
-I can perform these renames and update all user-facing strings if you give me the go-ahead; I'll run the test suite after to catch regressions.
-
----
-
 ## Quick operations cheat sheet
 - Start: `python3 ransomware_protection_system.py start`
 - Stop: `python3 ransomware_protection_system.py stop`
@@ -165,8 +155,3 @@ I can perform these renames and update all user-facing strings if you give me th
 
 License: MIT
 
-If you'd like, I can now:
-- Convert remaining Russian user-facing strings to English (in `create_test_files`, banners, prints, and logs), and/or
-- Rename the main script and help messages to `sentinelguard.py`.
-
-Tell me which of these you'd like me to do next and I will proceed.
