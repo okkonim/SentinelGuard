@@ -487,22 +487,25 @@ class SystemManager(LoggerMixin):
         print("=" * 60)
         print("STARTING HYBRID RANSOMWARE PROTECTION SYSTEM")
         print("=" * 60)
-        
+
         self.running = True
-        
+
         try:
+            # Initialize system components first
+            self._initialize_system()
+
             # Start security modules
             self._start_security_modules()
-            
+
             # Start correlation engine
             self._start_correlation_engine()
-            
+
             print("✓ Protection system started successfully")
             print("✓ All modules are running in real time")
             print("=" * 60)
-            
+
             return True
-            
+
         except Exception as e:
             RansomwareLogger.log_error(e, "Error starting protection system")
             self.stop_protection()
@@ -514,6 +517,7 @@ class SystemManager(LoggerMixin):
             # Start FIM monitoring
             if self.fim:
                 print("Starting FIM monitoring...")
+                RansomwareLogger.log_security_event('MODULE_START', 'FIM monitoring module started', 'INFO')
                 fim_thread = threading.Thread(target=self._start_fim_monitoring, daemon=True)
                 fim_thread.start()
                 self.threads.append(fim_thread)
@@ -522,6 +526,7 @@ class SystemManager(LoggerMixin):
             # Start process monitoring
             if self.process_monitor:
                 print("Starting process monitoring...")
+                RansomwareLogger.log_security_event('MODULE_START', 'Process monitoring module started', 'INFO')
                 process_thread = threading.Thread(target=self._start_process_monitoring, daemon=True)
                 process_thread.start()
                 self.threads.append(process_thread)
@@ -530,11 +535,12 @@ class SystemManager(LoggerMixin):
             # Start network sniffer (optional)
             if self.network_sniffer:
                 print("Starting network sniffer...")
+                RansomwareLogger.log_security_event('MODULE_START', 'Network sniffer module started', 'INFO')
                 network_thread = threading.Thread(target=self._start_network_monitoring, daemon=True)
                 network_thread.start()
                 self.threads.append(network_thread)
                 time.sleep(1)
-                
+
         except Exception as e:
             RansomwareLogger.log_error(e, "Error starting security modules")
             # Re-raise as critical system initialization failure so caller can clean up

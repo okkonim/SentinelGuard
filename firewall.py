@@ -6,10 +6,12 @@ import logging
 import os
 import sys
 from datetime import datetime
+from typing import Optional
 
 from utils.logging_utils import RansomwareLogger
 from utils.exceptions import RansomwareProtectionError, ConfigurationError
 from utils.constants import *
+from utils.log_manager import get_log_manager, LogLevel, LOG_MANAGER_AVAILABLE
 
 from database import Database
 from network_capture import NetworkCapture
@@ -262,9 +264,209 @@ class Firewall:
             raise RansomwareProtectionError(f"Failed to stop firewall correctly: {e}")
 
     def view_logs(self, table, limit=10):
+        """View logs from database tables (original method)."""
         events = self.db.query_events(table, limit)
         for event in events:
             print(event)
+    
+    def view_recent_logs(self, count: int = 20, level: Optional[str] = None,
+                        module: Optional[str] = None, keyword: Optional[str] = None):
+        """
+        View recent logs from the in-memory log buffer.
+        
+        Args:
+            count: Number of log entries to display
+            level: Filter by level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+            module: Filter by module name
+            keyword: Filter by keyword in message
+        """
+        if not LOG_MANAGER_AVAILABLE:
+            print("Log manager not available. Using database logs instead.")
+            self.view_logs('network_events', count)
+            return
+        
+        try:
+            log_manager = get_log_manager()
+            
+            # Convert level string to LogLevel enum
+            log_level = None
+            if level:
+                try:
+                    log_level = LogLevel[level.upper()]
+                except KeyError:
+                    print(f"Invalid level: {level}. Using all levels.")
+            
+            # Get filtered logs
+            logs = log_manager.get_recent_logs(
+                count=count,
+                level=log_level,
+                module=module,
+                keyword=keyword
+            )
+            
+            if not logs:
+                print("No logs found matching the criteria.")
+                return
+            
+            # Display logs
+            print("\n" + "=" * 80)
+            print("RECENT SYSTEM LOGS")
+            print("=" * 80)
+            
+            formatted = log_manager.format_logs_for_display(logs, show_details=False, colored=True)
+            print(formatted)
+            
+            print("=" * 80)
+            print(f"Showing {len(logs)} of {count} requested entries")
+            
+        except Exception as e:
+            self.logger.error(f"Error viewing logs: {e}")
+            print(f"Error viewing logs: {e}")
+    
+    def view_logs_by_level(self, level: str, count: int = 50):
+        """
+        View logs filtered by severity level.
+        
+        Args:
+            level: Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+            count: Maximum entries to display
+        """
+        self.view_recent_logs(count=count, level=level)
+    
+    def view_logs_tail(self, count: int = 20):
+        """View the most recent log entries (like tail)."""
+        self.view_recent_logs(count=count)
+    
+    def search_logs(self, query: str, count: int = 100):
+        """
+        Search logs by keyword.
+        
+        Args:
+            query: Search query string
+            count: Maximum entries to display
+        """
+        self.view_recent_logs(count=count, keyword=query)
+    
+    def view_log_statistics(self):
+        """Display log statistics and summary."""
+        if not LOG_MANAGER_AVAILABLE:
+            print("Log manager not available.")
+            return
+        
+        try:
+            log_manager = get_log_manager()
+            stats = log_manager.get_statistics()
+            level_counts = log_manager.get_level_counts()
+            
+            print("\n" + "=" * 60)
+            print("LOG STATISTICS")
+            print("=" * 60)
+            print(f"Total logs recorded: {stats['total_logs']}")
+            print(f"Buffer size: {stats['buffer_size']} / {log_manager.max_buffer_size}")
+            print(f"Uptime: {stats['uptime_seconds']:.1f} seconds")
+            print(f"Logs per second: {stats['logs_per_second']:.2f}")
+            
+            print("\nLogs by level:")
+            for level_name, count in level_counts.items():
+                bar = '█' * min(count // max(stats['total_logs'] // 30, 1), 30)
+                print(f"  {level_name:<8}: {count:>6} {bar}")
+            
+            print("\nTop modules:")
+            modules = sorted(stats['logs_by_module'].items(), key=lambda x: x[1], reverse=True)[:5]
+            for module, count in modules:
+                print(f"  {module}: {count}")
+            
+            print("=" * 60)
+            
+        except Exception as e:
+            self.logger.error(f"Error viewing log statistics: {e}")
+            print(f"Error: {e}")
+    
+    def follow_logs(self, count: int = 10, level: Optional[str] = None):
+        """
+        Follow logs in real-time (like tail -f).
+        Press Ctrl+C to stop.
+        
+        Args:
+            count: Initial entries to show
+            level: Optional level filter
+        """
+        if not LOG_MANAGER_AVAILABLE:
+            print("Log manager not available.")
+            return
+        
+        try:
+            log_manager = get_log_manager()
+            
+            # Convert level string to LogLevel enum
+            log_level = None
+            if level:
+                try:
+                    log_level = LogLevel[level.upper()]
+                except KeyError:
+                    print(f"Invalid level: {level}. Following all levels.")
+            
+            print("\nFollowing logs (Press Ctrl+C to stop)...")
+            print("-" * 80)
+            
+            # Show initial logs
+            logs = log_manager.get_recent_logs(count=count, level=log_level)
+            for log in logs:
+                print(log_manager.format_logs_for_display([log], colored=True))
+            
+            # Stream new logs
+            def print_log(entry):
+                print(log_manager.format_logs_for_display([entry], colored=True))
+            
+            log_manager.stream_logs(print_log, level=log_level)
+            
+        except KeyboardInterrupt:
+            print("\nStopped following logs.")
+        except Exception as e:
+            self.logger.error(f"Error following logs: {e}")
+            print(f"Error: {e}")
+    
+    def export_logs(self, count: int = 1000, format: str = 'text', output_file: Optional[str] = None):
+        """
+        Export logs to a file.
+        
+        Args:
+            count: Number of logs to export
+            format: Output format (text, json)
+            output_file: Output file path (optional, prints to stdout if not specified)
+        """
+        if not LOG_MANAGER_AVAILABLE:
+            print("Log manager not available.")
+            return
+        
+        try:
+            log_manager = get_log_manager()
+            logs_text = log_manager.export_logs(format=format, count=count)
+            
+            if output_file:
+                with open(output_file, 'w', encoding='utf-8') as f:
+                    f.write(logs_text)
+                print(f"Logs exported to {output_file}")
+            else:
+                print(logs_text)
+                
+        except Exception as e:
+            self.logger.error(f"Error exporting logs: {e}")
+            print(f"Error: {e}")
+    
+    def clear_logs(self):
+        """Clear the in-memory log buffer."""
+        if not LOG_MANAGER_AVAILABLE:
+            print("Log manager not available.")
+            return
+        
+        try:
+            log_manager = get_log_manager()
+            log_manager.clear_buffer()
+            print("Log buffer cleared.")
+        except Exception as e:
+            self.logger.error(f"Error clearing logs: {e}")
+            print(f"Error: {e}")
 
     def manual_scan(self, path):
         """Manual YARA scan of file or directory"""
@@ -533,13 +735,60 @@ def interactive_menu(firewall):
             else:
                 print("Error starting ransomware protection system.")
         elif choice == '7':
-            table = input("Table (network_events, fim_events, process_events, netsec_alerts, yara_events): ").strip()
-            if table in ['network_events', 'fim_events', 'process_events', 'netsec_alerts', 'yara_events']:
-                limit = input("Number of records (default 10): ").strip()
+            print("\nLog viewing options:")
+            print("  a. View recent logs")
+            print("  b. View logs by level")
+            print("  c. Search logs by keyword")
+            print("  d. View log statistics")
+            print("  e. Follow logs in real-time")
+            print("  f. Export logs")
+            print("  g. View database logs")
+            sub_choice = input("Select (a-g): ").strip().lower()
+            
+            if sub_choice == 'a':
+                limit = input("Number of records (default 20): ").strip()
+                limit = int(limit) if limit.isdigit() else 20
+                firewall.view_recent_logs(count=limit)
+            elif sub_choice == 'b':
+                level = input("Level (DEBUG, INFO, WARNING, ERROR, CRITICAL): ").strip().upper()
+                if level in ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']:
+                    limit = input("Number of records (default 50): ").strip()
+                    limit = int(limit) if limit.isdigit() else 50
+                    firewall.view_logs_by_level(level, count=limit)
+                else:
+                    print("Invalid level.")
+            elif sub_choice == 'c':
+                query = input("Search query: ").strip()
+                if query:
+                    limit = input("Number of records (default 100): ").strip()
+                    limit = int(limit) if limit.isdigit() else 100
+                    firewall.search_logs(query, count=limit)
+                else:
+                    print("Query not specified.")
+            elif sub_choice == 'd':
+                firewall.view_log_statistics()
+            elif sub_choice == 'e':
+                limit = input("Initial entries to show (default 10): ").strip()
                 limit = int(limit) if limit.isdigit() else 10
-                firewall.view_logs(table, limit)
+                level = input("Level filter (optional, press Enter to skip): ").strip().upper()
+                firewall.follow_logs(count=limit, level=level if level else None)
+            elif sub_choice == 'f':
+                count = input("Number of logs to export (default 1000): ").strip()
+                count = int(count) if count.isdigit() else 1000
+                fmt = input("Format (text/json, default text): ").strip().lower()
+                fmt = fmt if fmt in ['text', 'json'] else 'text'
+                output = input("Output file (optional, press Enter for stdout): ").strip()
+                firewall.export_logs(count=count, format=fmt, output_file=output if output else None)
+            elif sub_choice == 'g':
+                table = input("Table (network_events, fim_events, process_events, netsec_alerts, yara_events): ").strip()
+                if table in ['network_events', 'fim_events', 'process_events', 'netsec_alerts', 'yara_events']:
+                    limit = input("Number of records (default 10): ").strip()
+                    limit = int(limit) if limit.isdigit() else 10
+                    firewall.view_logs(table, limit)
+                else:
+                    print("Invalid table.")
             else:
-                print("Invalid table.")
+                print("Invalid choice.")
         elif choice == '8':
             firewall.reload_rules()
             print("Rules reloaded.")
@@ -576,7 +825,20 @@ def interactive_menu(firewall):
 def main():
     parser = argparse.ArgumentParser(
         description="Firewall / SentinelGuard command-line interface (primary project entry)",
-        epilog="Usage examples:\n  python3 firewall.py start\n  python3 firewall.py logs --table fim_events --limit 20\n  python3 firewall.py scan --path /tmp/sample --limit 10\n\nTip: `ransomware_protection_system.py` is deprecated and will delegate to this CLI (it emits a DeprecationWarning).",
+        epilog="""
+Usage examples:
+  python3 firewall.py start
+  python3 firewall.py logs --table fim_events --limit 20
+  python3 firewall.py logs --level WARNING --limit 50
+  python3 firewall.py logs --tail --limit 20
+  python3 firewall.py logs --follow --level INFO
+  python3 firewall.py logs --search error --limit 100
+  python3 firewall.py logs --stats
+  python3 firewall.py logs --export --format json --output logs.json
+  python3 firewall.py scan --path /tmp/sample --limit 10
+
+Tip: `ransomware_protection_system.py` is deprecated and will delegate to this CLI (it emits a DeprecationWarning).
+        """,
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
 
@@ -584,10 +846,30 @@ def main():
     parser.add_argument('--db', '-d', default=DB_DEFAULT_NAME, help=f"Database file (default: {DB_DEFAULT_NAME})")
     parser.add_argument('--version', action='version', version='SentinelGuard 0.1')
 
-    parser.add_argument('command', nargs='?', choices=['start', 'stop', 'logs', 'reload', 'netsec-scan', 'baseline', 'compare', 'start-sniffer', 'start-fim', 'start-process', 'start-netsec', 'start-ransomware', 'interactive', 'scan', 'rules', 'pe-analyze', 'pe-reports'], help="Command to execute")
-    parser.add_argument('--table', choices=['network_events', 'fim_events', 'process_events', 'netsec_alerts', 'yara_events', 'ransomware_attacks'], help="Table for viewing logs")
+    parser.add_argument('command', nargs='?', choices=[
+        'start', 'stop', 'logs', 'reload', 'netsec-scan', 'baseline', 'compare', 
+        'start-sniffer', 'start-fim', 'start-process', 'start-netsec', 
+        'start-ransomware', 'interactive', 'scan', 'rules', 'pe-analyze', 'pe-reports'
+    ], help="Command to execute")
+    
+    # Database logs arguments
+    parser.add_argument('--table', choices=['network_events', 'fim_events', 'process_events', 'netsec_alerts', 'yara_events', 'ransomware_attacks'], help="Table for viewing database logs")
     parser.add_argument('--limit', type=int, default=10, help="Number of log records to display")
     parser.add_argument('--path', help="Path for scanning (for scan command)")
+    
+    # In-memory logs arguments (for 'logs' command)
+    logs_group = parser.add_argument_group('In-memory log options')
+    logs_group.add_argument('--level', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], help='Filter logs by level')
+    logs_group.add_argument('--module', help='Filter logs by module name')
+    logs_group.add_argument('--keyword', '--search', help='Search logs by keyword')
+    logs_group.add_argument('--tail', action='store_true', help='Show most recent logs (like tail)')
+    logs_group.add_argument('--follow', action='store_true', help='Follow logs in real-time (like tail -f)')
+    logs_group.add_argument('--stats', action='store_true', help='Show log statistics')
+    logs_group.add_argument('--export', action='store_true', help='Export logs to file')
+    logs_group.add_argument('--format', choices=['text', 'json'], default='text', help='Export format (default: text)')
+    logs_group.add_argument('--output', help='Output file path for export')
+    logs_group.add_argument('--clear', action='store_true', help='Clear log buffer')
+    logs_group.add_argument('--since', help='Show logs since timestamp (YYYY-MM-DD HH:MM:SS)')
 
     args = parser.parse_args()
 
@@ -601,10 +883,29 @@ def main():
         except KeyboardInterrupt:
             firewall.stop()
     elif args.command == 'logs':
-        if not args.table:
-            print("Please specify --table")
-            return
-        firewall.view_logs(args.table, args.limit)
+        # Handle in-memory log commands first
+        if args.stats:
+            firewall.view_log_statistics()
+        elif args.clear:
+            firewall.clear_logs()
+        elif args.follow:
+            firewall.follow_logs(count=args.limit, level=args.level)
+        elif args.export:
+            firewall.export_logs(count=args.limit, format=args.format, output_file=args.output)
+        elif args.tail or args.keyword or args.level or args.module:
+            # Use new in-memory logs
+            firewall.view_recent_logs(
+                count=args.limit,
+                level=args.level,
+                module=args.module,
+                keyword=args.keyword
+            )
+        elif args.table:
+            # Fallback to original database logs
+            firewall.view_logs(args.table, args.limit)
+        else:
+            # Default: show recent in-memory logs
+            firewall.view_recent_logs(count=args.limit)
     elif args.command == 'reload':
         firewall.reload_rules()
     elif args.command == 'netsec-scan':

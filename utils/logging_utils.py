@@ -9,6 +9,14 @@ import sys
 from typing import Optional, Dict, Any
 from pathlib import Path
 
+# Import LogManager for in-memory log buffer
+try:
+    from .log_manager import LogManager, get_log_manager, LogLevel
+    LOG_MANAGER_AVAILABLE = True
+except ImportError:
+    LOG_MANAGER_AVAILABLE = False
+    LogLevel = None
+
 
 class LoggerMixin:
     """Mixin class to provide logging capabilities to other classes."""
@@ -17,7 +25,7 @@ class LoggerMixin:
     def logger(self) -> logging.Logger:
         """Get logger instance for the class."""
         if not hasattr(self, '_logger'):
-            self._logger = logging.getLogger(self.__class__.__name__)
+            self._logger = logging.getLogger(f'ransomware_protection.{self.__class__.__name__}')
         return self._logger
 
 
@@ -83,19 +91,26 @@ class RansomwareLogger:
             main_logger.addHandler(file_handler)
 
             # Console handler
-            console_handler = logging.StreamHandler(sys.stdout)
+            console_handler = logging.StreamHandler(sys.stderr)
             console_handler.setFormatter(formatter)
             main_logger.addHandler(console_handler)
 
-            # Prevent duplicate log propagation to root handlers
-            main_logger.propagate = False
+            # Allow propagation to root logger for console output
+            main_logger.propagate = True
 
             # Configure root logger only once
             root_logger = logging.getLogger()
             if not root_logger.handlers:
                 root_logger.setLevel(main_logger.level)
-                root_logger.addHandler(console_handler)
+                # Don't add console handler to root logger to avoid duplicate output
                 root_logger.addHandler(file_handler)
+        
+        # Initialize LogManager for in-memory buffering if available
+        if LOG_MANAGER_AVAILABLE:
+            try:
+                self._log_manager = get_log_manager()
+            except Exception:
+                pass
 
     @staticmethod
     def get_logger(name: str) -> logging.Logger:
