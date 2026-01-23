@@ -1,7 +1,5 @@
 # SentinelGuard — Ransomware Protection System (Detailed)
 
-> A practical, code-accurate README describing modules, CLI, config keys, and operational behavior.
-
 ---
 
 ## Overview
