@@ -1,4 +1,4 @@
-# SentinelGuard — Ransomware Protection System (Detailed)
+# SentinelGuard — Ransomware Protection System (Undone)
 
 ---
 
